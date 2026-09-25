@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .bg { fill: #0f0f0f; }
+    .n  { fill: #ffffff; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #ffffff; }
+      .n  { fill: #0f0f0f; }
+    }
+  </style>
+  <!-- Rounded background -->
+  <rect class="bg" width="32" height="32" rx="7"/>
+  <!-- N — geometric bold paths matching Plus Jakarta Sans proportions -->
+  <!-- Left stroke -->
+  <rect class="n" x="5.5" y="5.5" width="4" height="21"/>
+  <!-- Diagonal (top-right of left stroke → bottom-left of right stroke) -->
+  <polygon class="n" points="9.5,5.5 13.5,5.5 22.5,26.5 18.5,26.5"/>
+  <!-- Right stroke -->
+  <rect class="n" x="22.5" y="5.5" width="4" height="21"/>
+</svg>

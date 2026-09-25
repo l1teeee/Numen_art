@@ -1,0 +1,34 @@
+.background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.glow {
+  position: absolute;
+  width: 60%;
+  height: 60%;
+  left: 15%;
+  top: -5%;
+  /* closest-side matches the gradient's ellipse to this box's own aspect ratio */
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.035), transparent 70%);
+  will-change: transform;
+  animation: drift-glow 25s ease-in-out infinite alternate;
+}
+
+@keyframes drift-glow {
+  from {
+    transform: translate(-10%, -6%) scale(0.9);
+  }
+  to {
+    transform: translate(14%, 10%) scale(1.15);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glow {
+    animation: none;
+  }
+}
