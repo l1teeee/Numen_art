@@ -1,0 +1,74 @@
+.line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* must paint above WhitePractices' .stage (z-index 1) or the line hides behind
+     the full-bleed videos instead of blending over them */
+  z-index: 5;
+  /* difference of white against the white page renders near-black (today's look),
+     and against dark video regions it renders white - the line stays visible over both */
+  mix-blend-mode: difference;
+  animation: lineHeartbeat 1.4s ease-in-out infinite;
+}
+
+.line path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+/* dip sits early in the cycle to mirror the canvas heartbeat rhythm */
+@keyframes lineHeartbeat {
+  0% {
+    opacity: 1;
+  }
+  15% {
+    opacity: 0.7;
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.sprouts {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  /* stays with .line above the practices stage so hover sprouts don't hide either */
+  z-index: 5;
+  mix-blend-mode: difference;
+}
+
+/* the heartbeat re-blends the whole stretched section every frame, too costly on touch and small screens */
+@media (max-width: 810px), (pointer: coarse) {
+  .line {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .line {
+    animation: none;
+    opacity: 1;
+  }
+
+  .line path {
+    stroke-dasharray: none;
+    stroke-dashoffset: 0;
+  }
+
+  /* sprouts are cursor-driven motion - no listener is attached under reduced motion, hide the empty canvas */
+  .sprouts {
+    display: none;
+  }
+}

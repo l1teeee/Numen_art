@@ -1,7 +1,7 @@
-import Hero from './components/Hero'
+import ScrollStory from './components/ScrollStory'
 
 function App() {
-  return <Hero />
+  return <ScrollStory />
 }
 
 export default App

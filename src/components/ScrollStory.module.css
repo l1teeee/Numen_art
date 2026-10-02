@@ -1,0 +1,4 @@
+.story {
+  position: relative;
+  /* No z-index: the fixed canvas must interleave with the hero and white section in the root stacking context. */
+}

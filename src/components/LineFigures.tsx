@@ -1,179 +1,31 @@
 import { useEffect, useRef } from 'react'
+import { MOBILE_BREAKPOINT_PX, traceFigure, TWO_PI } from '../figure/figureGeometry'
+import type { FigureGeometry } from '../figure/figureGeometry'
+import { addOpenedLoop, addSmoothLoop, MAX_GAP_HALF_ANGLE } from '../figure/figurePaths'
+import type { Opening } from '../figure/figurePaths'
+import { dampTowards } from '../scroll/storyTimeline'
+import type { StoryFrame } from '../scroll/storyTimeline'
 import styles from './LineFigures.module.css'
 
-const TWO_PI = Math.PI * 2
-const MOBILE_BREAKPOINT_PX = 810, MAX_DEVICE_PIXEL_RATIO = 2
+const MAX_DEVICE_PIXEL_RATIO = 2
 const REDUCED_MOTION_T = 25 // a representative "centred hold" instant for the static frame
 
-function smootherstep(x: number): number {
-  const c = Math.max(0, Math.min(1, x))
-  return c * c * c * (c * (c * 6 - 15) + 10)
-}
+// heartbeat pulse: runs on real time (performance.now()), never on the animation's own
+// elapsed/t, so the lines keep beating even while the descent freezes t. Lub-dub over a
+// 1.4s cycle - a strong first beat, a softer second beat, then a long rest.
+const HEARTBEAT_PERIOD_S = 1.4
+const HEARTBEAT_LUB_CENTER = 0.12
+const HEARTBEAT_LUB_WIDTH = 0.055
+const HEARTBEAT_DUB_CENTER = 0.32
+const HEARTBEAT_DUB_WIDTH = 0.07
+const HEARTBEAT_DUB_WEIGHT = 0.55
+const HEARTBEAT_WIDTH_AMPLITUDE = 0.65 // raised from 0.45 so the palpito reads clearly on the thicker centre line
 
-function lerp(a: number, b: number, t: number): number {
-  return a + (b - a) * t
-}
-
-// scalar field: |cos*cos| cushions, peak 1 at every integer (i,j). Coordinates are warped
-// a little before the field is evaluated so the lattice breathes organically instead of
-// looking like a rigid grid.
-function fieldAt(u: number, v: number, t: number): number {
-  const wu = u + 0.03 * Math.sin(0.45 * v + t * 0.07)
-  const wv = v + 0.03 * Math.cos(0.35 * u - t * 0.06)
-  return Math.abs(Math.cos(Math.PI * wu) * Math.cos(Math.PI * wv))
-}
-
-// every contour is star-shaped around its cell centre: march outward with a coarse
-// step, then bisect for where the field crosses the level. Cell centres stay fixed on
-// the square lattice always, so neighbouring cells can never overlap or tangle.
-const COARSE_STEP = 0.04, MAX_RADIUS_MULT = 0.75, BISECTION_ITERS = 10
-const ESTIMATED_COARSE_STEPS = Math.ceil(MAX_RADIUS_MULT / COARSE_STEP)
-
-function traceContour(cu: number, cv: number, level: number, angleCount: number, t: number): Float64Array {
-  const radii = new Float64Array(angleCount)
-
-  for (let k = 0; k < angleCount; k++) {
-    const angle = (k / angleCount) * TWO_PI
-    const dx = Math.cos(angle)
-    const dy = Math.sin(angle)
-    let rLo = 0
-    let rHi = MAX_RADIUS_MULT
-    let crossed = false
-    for (let r = COARSE_STEP; r <= MAX_RADIUS_MULT; r += COARSE_STEP) {
-      if (fieldAt(cu + dx * r, cv + dy * r, t) < level) {
-        rHi = r
-        crossed = true
-        break
-      }
-      rLo = r
-    }
-    if (crossed) {
-      for (let iter = 0; iter < BISECTION_ITERS; iter++) {
-        const mid = (rLo + rHi) / 2
-        if (fieldAt(cu + dx * mid, cv + dy * mid, t) >= level) rLo = mid
-        else rHi = mid
-      }
-    }
-    radii[k] = crossed ? (rLo + rHi) / 2 : MAX_RADIUS_MULT
-  }
-
-  return radii
-}
-
-// mode blend (40s loop): mosaic hold -> transition to the centred composition -> hold -> back
-const MODE_CYCLE_S = 40
-const MODE_MOSAIC_HOLD_S = 10, MODE_TRANSITION_S = 7, MODE_CENTERED_HOLD_S = 16
-
-function modeBlend(t: number): number {
-  const p = ((t % MODE_CYCLE_S) + MODE_CYCLE_S) % MODE_CYCLE_S
-  if (p < MODE_MOSAIC_HOLD_S) return 0
-  if (p < MODE_MOSAIC_HOLD_S + MODE_TRANSITION_S) return smootherstep((p - MODE_MOSAIC_HOLD_S) / MODE_TRANSITION_S)
-  if (p < MODE_MOSAIC_HOLD_S + MODE_TRANSITION_S + MODE_CENTERED_HOLD_S) return 1
-  const outPos = (p - MODE_MOSAIC_HOLD_S - MODE_TRANSITION_S - MODE_CENTERED_HOLD_S) / MODE_TRANSITION_S
-  return 1 - smootherstep(outPos)
-}
-
-// breathing: a global scale around the hero centre, applied to everything. Amplitude is
-// larger once centred (the rings breathe more than the mosaic does). Each ring gets a
-// slightly delayed phase of the SAME breath, so the pulse visibly ripples outward.
-const BREATH_PERIOD_S = 10
-const BREATH_AMPLITUDE_MOSAIC = 0.08, BREATH_AMPLITUDE_CENTERED = 0.16
-const RING_PHASE_STEP_S = 0.35
-
-function breathAt(t: number, phaseOffsetS: number, amplitude: number): number {
-  return 1 + amplitude * Math.sin((TWO_PI * (t - phaseOffsetS)) / BREATH_PERIOD_S)
-}
-
-// the 5 concentric rings of the centred composition: radii as fractions of min(w,h), a
-// squircle shape (superellipse) whose roundness slowly wobbles, and alpha for the two
-// outer rings that only exist once the composition has centred
-const RING_RADII_FRAC = [0.3, 0.52, 0.76, 1.02, 1.32]
-const RING_ALPHA_EXTRA = [0.12, 0.09] // rings 4 and 5
-const RING_STRETCH_DESKTOP = 1.3, RING_STRETCH_MOBILE = 1
-const RING_N_MIN = 2.2, RING_N_MAX = 4, RING_N_PERIOD_S = 14
-const RING_OUTER_START_SCALE = 0.8
-
-function ringSuperellipseN(t: number): number {
-  const wobble = (1 - Math.cos((TWO_PI * t) / RING_N_PERIOD_S)) / 2
-  return lerp(RING_N_MIN, RING_N_MAX, wobble)
-}
-
-// axis-aligned superellipse ("squircle"): a circle at n=2, rounder or squarer as n moves
-function superellipseRadius(n: number, theta: number): number {
-  return 1 / Math.pow(Math.pow(Math.abs(Math.cos(theta)), n) + Math.pow(Math.abs(Math.sin(theta)), n), 1 / n)
-}
-
-function meanOf(values: Float64Array): number {
-  let sum = 0
-  for (let k = 0; k < values.length; k++) sum += values[k]
-  return sum / values.length
-}
-
-// ring k's radius in centre-composition-local units (mean = RING_RADII_FRAC[k]),
-// including its own outward-rippling breath phase
-function ringRadii(ringIndex: number, angleCount: number, t: number, breathAmplitude: number): Float64Array {
-  const n = ringSuperellipseN(t)
-  const shapeVals = new Float64Array(angleCount)
-  for (let k = 0; k < angleCount; k++) shapeVals[k] = superellipseRadius(n, (k / angleCount) * TWO_PI)
-  const shapeMean = meanOf(shapeVals)
-  const ripple = breathAt(t, ringIndex * RING_PHASE_STEP_S, breathAmplitude) / breathAt(t, 0, breathAmplitude)
-
-  const radii = new Float64Array(angleCount)
-  for (let k = 0; k < angleCount; k++) radii[k] = (RING_RADII_FRAC[ringIndex] * shapeVals[k] * ripple) / shapeMean
-  return radii
-}
-
-// keeps nested levels strictly ordered (inner < outer) at every angle so a blended shape
-// can never cross into the level nested inside it
-function enforceMinGap(r: Float64Array, innerR: Float64Array, minGap: number) {
-  for (let k = 0; k < r.length; k++) {
-    const floor = innerR[k] + minGap
-    if (r[k] < floor) r[k] = floor
-  }
-}
-
-type Layout = { cx: number; cy: number; S: number; stretch: number }
-
-function layoutFor(width: number, height: number, breath: number): Layout {
-  const isNarrow = width < MOBILE_BREAKPOINT_PX
-  const baseDim = isNarrow ? width : Math.min(width, height)
-  const S = baseDim * (isNarrow ? 0.9 : 0.55) * breath
-  return { cx: width / 2, cy: height / 2, S, stretch: isNarrow ? 1 : 1.15 }
-}
-
-function project(u: number, v: number, layout: Layout): [number, number] {
-  return [layout.cx + u * layout.S * layout.stretch, layout.cy + v * layout.S]
-}
-
-// moves a point along the line from the hero centre, e.g. factor 1.7 pushes it 70% further out
-function scaleAboutPoint(px: number, py: number, cx: number, cy: number, factor: number): [number, number] {
-  return [cx + (px - cx) * factor, cy + (py - cy) * factor]
-}
-
-// maps a cell's radii into closed pixel-space points, ready to stroke
-function drawContour(radii: Float64Array, cu: number, cv: number, layout: Layout): [number, number][] {
-  const pts: [number, number][] = []
-  for (let k = 0; k < radii.length; k++) {
-    const angle = (k / radii.length) * TWO_PI
-    pts.push(project(cu + radii[k] * Math.cos(angle), cv + radii[k] * Math.sin(angle), layout))
-  }
-  return pts
-}
-
-function midpoint(a: [number, number], b: [number, number]): [number, number] {
-  return [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-}
-
-// each point becomes a quadratic control point and the curve passes through the
-// midpoints, so the hairline is solid and continuous instead of faceted or dashed
-function addSmoothLoop(ctx: CanvasRenderingContext2D, pts: [number, number][]) {
-  const n = pts.length
-  const start = midpoint(pts[n - 1], pts[0])
-  ctx.moveTo(start[0], start[1])
-  for (let k = 0; k < n; k++) {
-    const mid = midpoint(pts[k], pts[(k + 1) % n])
-    ctx.quadraticCurveTo(pts[k][0], pts[k][1], mid[0], mid[1])
-  }
+function pulseAt(nowMs: number): number {
+  const x = (nowMs / 1000 % HEARTBEAT_PERIOD_S) / HEARTBEAT_PERIOD_S
+  const lub = Math.exp(-Math.pow((x - HEARTBEAT_LUB_CENTER) / HEARTBEAT_LUB_WIDTH, 2))
+  const dub = HEARTBEAT_DUB_WEIGHT * Math.exp(-Math.pow((x - HEARTBEAT_DUB_CENTER) / HEARTBEAT_DUB_WIDTH, 2))
+  return lub + dub
 }
 
 // cursor trail: an offscreen mask accumulates soft dots along the pointer's recent
@@ -240,20 +92,38 @@ function updateTrailMask(trail: TrailState, pointer: { x: number; y: number } | 
   trail.prevPointer = pointer
 }
 
-// only the parts of the contours the fading trail mask still covers stay visible
-function buildHighlightCanvas(trail: TrailState, allPts: [number, number][][], width: number, height: number) {
+// only the parts of the contours the fading trail mask still covers stay visible. Strokes
+// the SAME Path2D objects renderFigure just drew, so the highlight follows the opened
+// shapes and tails and never lights up the removed bottom arc.
+function buildHighlightCanvas(trail: TrailState, renderedPaths: RenderedPath[], width: number, height: number, heroTop: number) {
   const { highlightCtx, maskCanvas } = trail
   highlightCtx.clearRect(0, 0, width, height)
   highlightCtx.globalCompositeOperation = 'source-over'
-  highlightCtx.strokeStyle = `rgba(255, 255, 255, ${TRAIL_STROKE_ALPHA})`
   highlightCtx.lineWidth = TRAIL_LINE_WIDTH
   highlightCtx.lineCap = 'round'
   highlightCtx.lineJoin = 'round'
   highlightCtx.shadowBlur = TRAIL_SHADOW_BLUR
   highlightCtx.shadowColor = 'rgba(255, 255, 255, 1)'
-  highlightCtx.beginPath()
-  for (const pts of allPts) addSmoothLoop(highlightCtx, pts)
-  highlightCtx.stroke()
+
+  // group by visibility so paths that share it are stroked - and shadowed - once together,
+  // matching the single combined stroke the baseline highlight used (1 group at open=0)
+  const groups = new Map<number, Path2D>()
+  for (const { path, visibility } of renderedPaths) {
+    if (visibility < 0.01) continue
+    let group = groups.get(visibility)
+    if (!group) {
+      group = new Path2D()
+      groups.set(visibility, group)
+    }
+    group.addPath(path)
+  }
+  highlightCtx.save()
+  highlightCtx.translate(0, heroTop)
+  for (const [visibility, group] of groups) {
+    highlightCtx.strokeStyle = `rgba(255, 255, 255, ${TRAIL_STROKE_ALPHA * visibility})`
+    highlightCtx.stroke(group)
+  }
+  highlightCtx.restore()
   highlightCtx.shadowBlur = 0
 
   highlightCtx.globalCompositeOperation = 'destination-in'
@@ -270,114 +140,191 @@ function createTrailState(): TrailState | null {
   return { maskCanvas, maskCtx, highlightCanvas, highlightCtx, prevPointer: null, lastFrameMs: null, lastDotMs: -Infinity }
 }
 
-const CONTOUR_LEVELS = [0.62, 0.32, 0.1]
-const CONTOUR_ALPHAS = [0.3, 0.22, 0.15]
-const VISIBILITY_MARGIN_CELLS = 1.5, EVAL_BUDGET = 600_000, MIN_ANGLE_COUNT = 24
-const MIN_LEVEL_GAP_PX = 2
+// hover sprouts: tiny random curved lines born wherever the cursor moves, that grow briefly
+// then slowly contract back into their birth point instead of vanishing abruptly. Spawned in
+// the pointermove handler (see handlePointerMove), drawn each frame in drawSprouts.
+type Sprout = { x: number; y: number; angle: number; len: number; ctrlOffset: number; bornMs: number; lifeMs: number }
 
-// which mosaic cells (everything except the centre) are on screen right now
-function visibleNeighbourCells(layout: Layout, width: number, height: number): { i: number; j: number }[] {
-  const marginPx = VISIBILITY_MARGIN_CELLS * layout.S
-  const iMax = Math.ceil((width / 2 + marginPx) / (layout.S * layout.stretch))
-  const jMax = Math.ceil((height / 2 + marginPx) / layout.S)
+const SPROUT_SPAWN_DIST_PX = 14 // accumulated pointer distance before a sprout is born
+const SPROUT_SPAWN_BURST_DIST_PX = 40 // a single move past this distance births 2 sprouts instead of 1
+const SPROUT_MAX_ALIVE = 28
+const SPROUT_LEN_MIN_PX = 18, SPROUT_LEN_MAX_PX = 55
+const SPROUT_LIFE_MIN_MS = 900, SPROUT_LIFE_MAX_MS = 1800
+const SPROUT_CTRL_BOW_MIN = 0.2, SPROUT_CTRL_BOW_MAX = 0.5 // perpendicular bow, as a fraction of the sprout's own length
+const SPROUT_GROW_FRACTION = 0.18 // grows over the first 18% of life, then contracts over the rest
+const SPROUT_LINE_WIDTH = 1
 
-  const cells: { i: number; j: number }[] = []
-  for (let i = -iMax; i <= iMax; i++) {
-    for (let j = -jMax; j <= jMax; j++) {
-      if (i === 0 && j === 0) continue
-      const [px, py] = project(i, j, layout)
-      if (px < -marginPx || px > width + marginPx || py < -marginPx || py > height + marginPx) continue
-      cells.push({ i, j })
-    }
-  }
-  return cells
+// proximity gate: sprouts only spawn when the pointer is on or near a drawn line, not
+// anywhere over the canvas - hit-tested with a fat stroke tolerance against the same
+// Path2D objects the last frame actually drew (see lastRenderedPaths/lastHeroTop below)
+const SPROUT_HIT_TEST_LINE_WIDTH = 44
+
+// client: sprouts belong to the travelling line (the descent), not the resting hero rings -
+// gate on the loops having fully opened into tails before a sprout can spawn at all
+const SPROUT_MIN_OPEN = 0.9
+
+function randomBetween(min: number, max: number): number {
+  return min + Math.random() * (max - min)
 }
 
-// mosaic cells fade out and push radially outward from the hero centre as the
-// composition dissolves into the centred rings
-function drawNeighbourCells(
-  ctx: CanvasRenderingContext2D,
-  cells: { i: number; j: number }[],
-  angleCount: number,
-  t: number,
-  c: number,
-  layout: Layout,
-): [number, number][][] {
-  const alphaMul = 1 - c
-  const pushFactor = 1 + 0.7 * c
-  const allPts: [number, number][][] = []
-
-  for (let levelIndex = 0; levelIndex < CONTOUR_LEVELS.length; levelIndex++) {
-    const levelPts = cells.map((cell) => {
-      const radii = traceContour(cell.i, cell.j, CONTOUR_LEVELS[levelIndex], angleCount, t)
-      return drawContour(radii, cell.i, cell.j, layout).map(([px, py]) => scaleAboutPoint(px, py, layout.cx, layout.cy, pushFactor))
-    })
-    ctx.strokeStyle = `rgba(255, 255, 255, ${CONTOUR_ALPHAS[levelIndex] * alphaMul})`
-    ctx.beginPath()
-    for (const pts of levelPts) addSmoothLoop(ctx, pts)
-    ctx.stroke()
-    allPts.push(...levelPts)
-  }
-  return allPts
+// totally random per sprout by design - no symmetry, so hovering never reads as a fixed pattern
+function spawnSprout(sprouts: Sprout[], x: number, y: number, bornMs: number) {
+  if (sprouts.length >= SPROUT_MAX_ALIVE) sprouts.shift() // drop the oldest
+  const len = randomBetween(SPROUT_LEN_MIN_PX, SPROUT_LEN_MAX_PX)
+  const bowSign = Math.random() < 0.5 ? -1 : 1
+  sprouts.push({
+    x,
+    y,
+    angle: Math.random() * TWO_PI,
+    len,
+    ctrlOffset: bowSign * randomBetween(SPROUT_CTRL_BOW_MIN, SPROUT_CTRL_BOW_MAX) * len,
+    bornMs,
+    lifeMs: randomBetween(SPROUT_LIFE_MIN_MS, SPROUT_LIFE_MAX_MS),
+  })
 }
 
-// the central cell's 3 cushion levels blend into rings 1-3 (always fully opaque, since
-// the centre never fades - only its shape changes), plus rings 4-5 which only exist once
-// the composition has centred, expanding out of the middle as it blends in
-function drawCentralComposition(
-  ctx: CanvasRenderingContext2D,
-  angleCount: number,
-  t: number,
-  c: number,
-  breathAmplitude: number,
-  layout: Layout,
-  centerLayout: Layout,
-): [number, number][][] {
-  const allPts: [number, number][][] = []
-  const minGap = MIN_LEVEL_GAP_PX / centerLayout.S
-  const scaleToCenter = layout.S / centerLayout.S
-  let innerR: Float64Array | null = null
+function easeOutQuad(x: number): number {
+  return 1 - (1 - x) * (1 - x)
+}
 
-  for (let levelIndex = 0; levelIndex < CONTOUR_LEVELS.length; levelIndex++) {
-    const rCell = traceContour(0, 0, CONTOUR_LEVELS[levelIndex], angleCount, t)
-    const rRing = ringRadii(levelIndex, angleCount, t, breathAmplitude)
+function easeInOutQuad(x: number): number {
+  return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2
+}
 
-    const blended = new Float64Array(angleCount)
-    for (let k = 0; k < angleCount; k++) {
-      const rCellCenterUnits = rCell[k] * scaleToCenter
-      blended[k] = rCellCenterUnits + (rRing[k] - rCellCenterUnits) * c
+// grows 0 -> 1 over the first SPROUT_GROW_FRACTION of life, then contracts 1 -> 0 over the
+// rest - u is the fraction of the sprout's own curve currently drawn (see drawSprouts)
+function sproutProgress(age: number): number {
+  if (age < SPROUT_GROW_FRACTION) return easeOutQuad(age / SPROUT_GROW_FRACTION)
+  return 1 - easeInOutQuad((age - SPROUT_GROW_FRACTION) / (1 - SPROUT_GROW_FRACTION))
+}
+
+// draws only the leading [0, u] sub-curve of each sprout's quadratic (birth point -> control
+// -> tip), so the tip is what grows out and then retracts back into the birth point - the
+// stroke's shape never jumps, it just shortens. Mutates sprouts in place with a swap-remove.
+function drawSprouts(ctx: CanvasRenderingContext2D, sprouts: Sprout[]) {
+  const nowMs = performance.now()
+  ctx.lineCap = 'round'
+  let i = 0
+  while (i < sprouts.length) {
+    const sprout = sprouts[i]
+    const age = (nowMs - sprout.bornMs) / sprout.lifeMs
+    if (age >= 1) {
+      sprouts[i] = sprouts[sprouts.length - 1]
+      sprouts.pop()
+      continue
     }
-    if (innerR) enforceMinGap(blended, innerR, minGap)
-    innerR = blended
+    const u = sproutProgress(age)
+    i++
+    if (u <= 0.001) continue
 
-    const pts = drawContour(blended, 0, 0, centerLayout)
-    ctx.strokeStyle = `rgba(255, 255, 255, ${CONTOUR_ALPHAS[levelIndex]})`
+    const endX = sprout.x + Math.cos(sprout.angle) * sprout.len
+    const endY = sprout.y + Math.sin(sprout.angle) * sprout.len
+    const midX = (sprout.x + endX) / 2
+    const midY = (sprout.y + endY) / 2
+    const ctrlX = midX - Math.sin(sprout.angle) * sprout.ctrlOffset
+    const ctrlY = midY + Math.cos(sprout.angle) * sprout.ctrlOffset
+
+    const leadCtrlX = sprout.x + (ctrlX - sprout.x) * u
+    const leadCtrlY = sprout.y + (ctrlY - sprout.y) * u
+    const oneMinusU = 1 - u
+    const tipX = oneMinusU * oneMinusU * sprout.x + 2 * oneMinusU * u * ctrlX + u * u * endX
+    const tipY = oneMinusU * oneMinusU * sprout.y + 2 * oneMinusU * u * ctrlY + u * u * endY
+
+    ctx.lineWidth = SPROUT_LINE_WIDTH
+    ctx.strokeStyle = `rgba(255, 255, 255, ${0.75 * (1 - age * 0.6)})`
     ctx.beginPath()
-    addSmoothLoop(ctx, pts)
+    ctx.moveTo(sprout.x, sprout.y)
+    ctx.quadraticCurveTo(leadCtrlX, leadCtrlY, tipX, tipY)
     ctx.stroke()
-    allPts.push(pts)
   }
+}
 
-  const outerAlpha = smootherstep(c)
-  if (outerAlpha >= 0.01) {
-    const radiusScale = lerp(RING_OUTER_START_SCALE, 1, c)
-    for (let ringIndex = 3; ringIndex <= 4; ringIndex++) {
-      const rRing = ringRadii(ringIndex, angleCount, t, breathAmplitude)
-      const scaled = new Float64Array(angleCount)
-      for (let k = 0; k < angleCount; k++) scaled[k] = rRing[k] * radiusScale
-      if (innerR) enforceMinGap(scaled, innerR, minGap)
-      innerR = scaled
+type RenderedPath = { path: Path2D; visibility: number }
 
-      const pts = drawContour(scaled, 0, 0, centerLayout)
-      ctx.strokeStyle = `rgba(255, 255, 255, ${RING_ALPHA_EXTRA[ringIndex - 3] * outerAlpha})`
-      ctx.beginPath()
-      addSmoothLoop(ctx, pts)
-      ctx.stroke()
-      allPts.push(pts)
+// as the tails converge, every centre loop except the innermost dissolves so the bundle
+// reads as a single line by the time it reaches the white section. Outermost fades first.
+const MERGE_FADE_SPAN = 0.14
+const MERGE_FADE_BASE_START = 0.40
+const MERGE_FADE_START_STEP = 0.12
+
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value))
+}
+
+// index 0 is the innermost centre loop (never fades); higher indices are further out and
+// start fading earlier, spaced MERGE_FADE_START_STEP apart, ending at the outermost ring
+function centreLoopMergeVisibility(index: number, lastIndex: number, extend: number): number {
+  if (index === 0) return 1
+  const fadeStart = MERGE_FADE_BASE_START + MERGE_FADE_START_STEP * (lastIndex - index)
+  return 1 - clamp01((extend - fadeStart) / MERGE_FADE_SPAN)
+}
+
+// the innermost centre loop (index 0) is the one whose tails survive to the seam, so it
+// strokes noticeably thicker than everything else - that is what makes the final single
+// line and its heartbeat read clearly instead of blending into the other loops
+const CENTRE_LINE_WIDTH_INNERMOST = 1.9
+const CENTRE_LINE_WIDTH_BASE = 1.0
+const NEIGHBOUR_LINE_WIDTH = 1.0
+
+// draws the traced geometry: neighbour levels are always closed loops (never opened, just
+// faded further by the scroll), centre loops open into arcs + tails once gapHalfAngle grows.
+// widthFactor is the shared breathing+heartbeat multiplier (computed once in drawFrame);
+// each stroke sets its own ctx.lineWidth from its base width times that factor, so only the
+// innermost centre loop can be thicker while everything else keeps the previous look.
+// Returns every stroked path paired with its trail visibility (see buildHighlightCanvas).
+function renderFigure(ctx: CanvasRenderingContext2D, geometry: FigureGeometry, opening: Opening, pulse = 0, widthFactor = 1): RenderedPath[] {
+  const rendered: RenderedPath[] = []
+  const { neighbourVisibility } = opening
+  const pulseBoost = 1 + 0.3 * pulse
+
+  if (neighbourVisibility >= 0.01) {
+    ctx.lineWidth = NEIGHBOUR_LINE_WIDTH * widthFactor
+    for (const level of geometry.neighbourLevels) {
+      const path = new Path2D()
+      for (const loop of level.loops) addSmoothLoop(path, loop)
+      ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, level.alpha * neighbourVisibility * pulseBoost)})`
+      ctx.stroke(path)
+      rendered.push({ path, visibility: neighbourVisibility })
     }
   }
 
-  return allPts
+  const lastCentreLoopIndex = geometry.centreLoops.length - 1
+  for (let i = 0; i < geometry.centreLoops.length; i++) {
+    const loop = geometry.centreLoops[i]
+    const mergeVisibility = centreLoopMergeVisibility(i, lastCentreLoopIndex, opening.extend)
+    if (mergeVisibility < 0.01) continue
+
+    const path = new Path2D()
+    if (opening.gapHalfAngle < 0.001) addSmoothLoop(path, loop.pts)
+    else addOpenedLoop(path, loop.pts, opening.gapHalfAngle, opening.tailBottomY, opening.centreX, opening.extend)
+
+    ctx.lineWidth = (i === 0 ? CENTRE_LINE_WIDTH_INNERMOST : CENTRE_LINE_WIDTH_BASE) * widthFactor
+    ctx.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, loop.alpha * mergeVisibility * pulseBoost)})`
+    ctx.stroke(path)
+    rendered.push({ path, visibility: mergeVisibility })
+  }
+
+  return rendered
+}
+
+type CachedGeometry = { t: number; width: number; heroHeight: number; baseAngleCount: number; geometry: FigureGeometry }
+
+// reuses the frozen-frame cache when nothing the tracing depends on has changed, retracing
+// and storing otherwise
+function cachedFigureGeometry(
+  geometryCache: { current: CachedGeometry | null },
+  width: number,
+  heroHeight: number,
+  t: number,
+  baseAngleCount: number,
+): FigureGeometry {
+  const cached = geometryCache.current
+  if (cached && cached.t === t && cached.width === width && cached.heroHeight === heroHeight && cached.baseAngleCount === baseAngleCount) {
+    return cached.geometry
+  }
+  const geometry = traceFigure(width, heroHeight, t, baseAngleCount)
+  geometryCache.current = { t, width, heroHeight, baseAngleCount, geometry }
+  return geometry
 }
 
 function drawFrame(
@@ -388,82 +335,191 @@ function drawFrame(
   pointer: { x: number; y: number } | null,
   trail: TrailState | null,
   baseAngleCount: number,
+  frame: StoryFrame,
+  open: number,
+  extend: number,
+  geometryCache: { current: CachedGeometry | null },
+  pulse = 0,
+  sprouts: Sprout[] = [],
+  lastRenderedPaths: { current: RenderedPath[] },
+  lastHeroTop: { current: number },
 ) {
   ctx.clearRect(0, 0, width, height)
   if (width <= 0 || height <= 0) return
 
-  const c = modeBlend(t)
-  const breathAmplitude = lerp(BREATH_AMPLITUDE_MOSAIC, BREATH_AMPLITUDE_CENTERED, c)
-  const breath = breathAt(t, 0, breathAmplitude)
+  const geometry = cachedFigureGeometry(geometryCache, width, frame.heroHeight, t, baseAngleCount)
 
-  const layout = layoutFor(width, height, breath)
-  const isNarrow = width < MOBILE_BREAKPOINT_PX
-  const centerLayout: Layout = {
-    cx: width / 2,
-    cy: height / 2,
-    S: Math.min(width, height) * breath,
-    stretch: lerp(isNarrow ? 1 : 1.15, isNarrow ? RING_STRETCH_MOBILE : RING_STRETCH_DESKTOP, c),
+  const opening: Opening = {
+    gapHalfAngle: open * MAX_GAP_HALF_ANGLE,
+    tailBottomY: frame.whiteTop - frame.heroTop,
+    centreX: width / 2,
+    extend,
+    neighbourVisibility: 1 - open,
   }
 
-  const neighbourAlpha = 1 - c
-  const neighbourCells = neighbourAlpha >= 0.01 ? visibleNeighbourCells(layout, width, height) : []
-
-  // keep frame cost bounded: estimate cells * levels * angles * (steps + bisection), plus
-  // the always-present centre, and lower angles if the estimate is too high
-  const estimate = (neighbourCells.length + 1) * CONTOUR_LEVELS.length * baseAngleCount * (ESTIMATED_COARSE_STEPS + BISECTION_ITERS)
-  const angleCount =
-    estimate > EVAL_BUDGET ? Math.max(MIN_ANGLE_COUNT, Math.floor((baseAngleCount * EVAL_BUDGET) / estimate)) : baseAngleCount
-
-  ctx.lineWidth = 1
+  // swells with roughly the same 10s breath the geometry already has; freezes with t when scrolled.
+  // The heartbeat multiplier rides on top and keeps beating on real time even while frozen. Computed
+  // once here and passed into renderFigure, which turns it into a per-stroke ctx.lineWidth so the
+  // innermost centre loop can be thicker than every other loop.
+  const widthFactor = (1 + 0.22 * Math.sin(TWO_PI * t / 10 - 0.9)) * (1 + HEARTBEAT_WIDTH_AMPLITUDE * pulse)
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
 
-  const allPts: [number, number][][] = []
-  if (neighbourCells.length > 0) {
-    allPts.push(...drawNeighbourCells(ctx, neighbourCells, angleCount, t, c, layout))
+  ctx.save()
+  // The live offset keeps the frozen geometry attached to the hero while the page moves.
+  ctx.translate(0, frame.heroTop)
+  const renderedPaths = renderFigure(ctx, geometry, opening, pulse, widthFactor)
+  ctx.restore()
+
+  // only paths still meaningfully visible count as "on a line" for the hover-sprout gate
+  lastRenderedPaths.current = renderedPaths.filter((p) => p.visibility >= 0.05)
+  lastHeroTop.current = frame.heroTop
+
+  if (trail) {
+    updateTrailMask(trail, pointer, width, height)
+    if (performance.now() - trail.lastDotMs <= TRAIL_IDLE_SKIP_MS) {
+      buildHighlightCanvas(trail, renderedPaths, width, height, frame.heroTop)
+      ctx.drawImage(trail.highlightCanvas, 0, 0, width, height)
+    }
   }
-  allPts.push(...drawCentralComposition(ctx, angleCount, t, c, breathAmplitude, layout, centerLayout))
 
-  if (!trail) return
-  updateTrailMask(trail, pointer, width, height)
-  if (performance.now() - trail.lastDotMs > TRAIL_IDLE_SKIP_MS) return
-
-  buildHighlightCanvas(trail, allPts, width, height)
-  ctx.drawImage(trail.highlightCanvas, 0, 0, width, height)
+  // raw viewport coordinates - no heroTop translate - so sprouts stay pinned where the
+  // cursor actually was on screen rather than scrolling with the hero figure
+  drawSprouts(ctx, sprouts)
 }
 
-export default function LineFigures() {
+export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => StoryFrame }) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx) return
+    const attachedCanvas = canvasRef.current
+    if (!attachedCanvas) return
+    const canvas: HTMLCanvasElement = attachedCanvas
+    const drawingContext = canvas.getContext('2d')
+    if (!drawingContext) return
+    const ctx: CanvasRenderingContext2D = drawingContext
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     const pointerFine = window.matchMedia('(pointer: fine)').matches
-    const heroEl = canvas.parentElement
 
     let width = 0
     let height = 0
     let elapsed = reduceMotion ? REDUCED_MOTION_T : 0
+    let displayedOpen = 0
+    let displayedExtend = 0
     const pointerState: { current: { x: number; y: number } | null } = { current: null }
-    const trail = pointerFine ? createTrailState() : null
+    // The glow is autonomous motion and has no loop to fade it in that mode.
+    const trail = pointerFine && !reduceMotion ? createTrailState() : null
+    const geometryCache: { current: CachedGeometry | null } = { current: null }
+    // reused every frame (see drawSprouts' swap-remove) so spawning/animating sprouts never
+    // allocates per-sprout closures; only ever populated when trail exists (pointer fine, no
+    // reduced motion), same gate as the pointermove listener below
+    const sprouts: Sprout[] = []
+    let sproutSpawnAccumPx = 0
+    let lastSproutSpawnPoint: { x: number; y: number } | null = null
+    // latest drawn frame's paths/offset, read by the pointermove proximity gate - stays
+    // empty until the first drawFrame runs, so hovering before that spawns nothing
+    const lastRenderedPaths: { current: RenderedPath[] } = { current: [] }
+    const lastHeroTop: { current: number } = { current: 0 }
+    // frame.timeline.open from the last drawn frame - read by the sprout proximity gate
+    const lastOpen: { current: number } = { current: 0 }
 
-    function renderCurrentFrame() {
+    // what the last actually-drawn frame looked like, so an unchanged frozen frame with an
+    // idle trail can be skipped instead of re-rendering identical pixels every tick. open and
+    // extend are the displayed values because they are eased independently from the live frame
+    let lastDrawnOpen: number | null = null
+    let lastDrawnExtend: number | null = null
+    let lastDrawnHeroTop: number | null = null
+    let lastDrawnHeroHeight: number | null = null
+    let lastDrawnTailBottomY: number | null = null
+    let lastDrawnPointer: { x: number; y: number } | null = null
+    // the heartbeat pulse changes every frame - comparing it here (alongside the other
+    // lastDrawn values) means it never equals its previous float, so a visible frame is
+    // never mistaken for "nothing changed" while the geometry cache still avoids re-tracing
+    let lastDrawnPulse: number | null = null
+    // whether the last frame actually drawn had an idle trail - required (alongside the
+    // current idle check) before skipping, so one clean, highlight-free frame always runs
+    // right after the trail goes idle instead of leaving the last highlighted frame stuck
+    let lastDrawnTrailIdle = true
+    let canvasHidden = false
+
+    function renderCurrentFrame(frame: StoryFrame, pulse = 0, force = false) {
+      if (reduceMotion) {
+        displayedOpen = frame.timeline.open
+        displayedExtend = frame.timeline.extend
+      }
+
+      if (!frame.timeline.linesVisible) {
+        if (canvasHidden) return
+        ctx.clearRect(0, 0, width, height)
+        canvas.style.visibility = 'hidden'
+        canvasHidden = true
+        lastDrawnHeroTop = null
+        lastDrawnHeroHeight = null
+        lastDrawnTailBottomY = null
+        return
+      }
+
+      if (canvasHidden) {
+        canvas.style.visibility = ''
+        canvasHidden = false
+        force = true
+      }
       const baseAngleCount = width < MOBILE_BREAKPOINT_PX ? 96 : 160
-      drawFrame(ctx!, width, height, elapsed, pointerState.current, trail, baseAngleCount)
+      const trailIdle = !trail || performance.now() - trail.lastDotMs > TRAIL_IDLE_SKIP_MS
+
+      if (!force) {
+        const nothingChanged =
+          frame.timeline.frozen &&
+          frame.heroTop === lastDrawnHeroTop &&
+          frame.heroHeight === lastDrawnHeroHeight &&
+          (frame.whiteTop - frame.heroTop) === lastDrawnTailBottomY &&
+          displayedOpen === lastDrawnOpen &&
+          displayedExtend === lastDrawnExtend &&
+          pointerState.current === lastDrawnPointer &&
+          pulse === lastDrawnPulse &&
+          trailIdle &&
+          lastDrawnTrailIdle
+        if (nothingChanged) return
+      }
+
+      lastDrawnOpen = displayedOpen
+      lastDrawnExtend = displayedExtend
+      lastDrawnHeroTop = frame.heroTop
+      lastDrawnHeroHeight = frame.heroHeight
+      lastDrawnTailBottomY = frame.whiteTop - frame.heroTop
+      lastDrawnPointer = pointerState.current
+      lastDrawnPulse = pulse
+      lastDrawnTrailIdle = trailIdle
+      drawFrame(
+        ctx,
+        width,
+        height,
+        elapsed,
+        pointerState.current,
+        trail,
+        baseAngleCount,
+        frame,
+        displayedOpen,
+        displayedExtend,
+        geometryCache,
+        pulse,
+        sprouts,
+        lastRenderedPaths,
+        lastHeroTop,
+      )
+      lastOpen.current = frame.timeline.open
     }
 
     function resize() {
-      const rect = canvas!.getBoundingClientRect()
+      const rect = canvas.getBoundingClientRect()
       width = rect.width
       height = rect.height
       const dpr = Math.min(MAX_DEVICE_PIXEL_RATIO, Math.max(1, window.devicePixelRatio || 1))
 
-      canvas!.width = Math.round(width * dpr)
-      canvas!.height = Math.round(height * dpr)
-      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
+      canvas.width = Math.round(width * dpr)
+      canvas.height = Math.round(height * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       if (trail) {
         for (const c of [trail.maskCanvas, trail.highlightCanvas]) {
@@ -474,28 +530,72 @@ export default function LineFigures() {
         trail.highlightCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
       }
 
-      renderCurrentFrame()
+      const frame = getStoryFrame()
+      renderCurrentFrame(frame, 0, true)
     }
 
     resize()
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(canvas)
 
+    // hit-tests the pointer against the last drawn frame's line paths with a fat tolerance -
+    // only called every >= SPROUT_SPAWN_DIST_PX of movement (see handlePointerMove), so this
+    // stays a handful of isPointInStroke calls per move and never runs per animation frame
+    function pointerIsOnLine(x: number, y: number): boolean {
+      // client: sprouts must not appear in the resting hero rings, only once the figure has
+      // opened into the travelling line - checked before the isPointInStroke test below
+      if (lastOpen.current < SPROUT_MIN_OPEN) return false
+      const paths = lastRenderedPaths.current
+      if (paths.length === 0) return false
+      ctx.save()
+      ctx.lineWidth = SPROUT_HIT_TEST_LINE_WIDTH
+      const hit = paths.some(({ path }) => ctx.isPointInStroke(path, x, y - lastHeroTop.current))
+      ctx.restore()
+      return hit
+    }
+
     function handlePointerMove(event: PointerEvent) {
-      if (!heroEl) return
-      const rect = heroEl.getBoundingClientRect()
-      pointerState.current = { x: event.clientX - rect.left, y: event.clientY - rect.top }
-      if (reduceMotion) renderCurrentFrame()
+      const point = { x: event.clientX, y: event.clientY }
+      pointerState.current = point
+
+      if (lastSproutSpawnPoint) {
+        const moveDistPx = Math.hypot(point.x - lastSproutSpawnPoint.x, point.y - lastSproutSpawnPoint.y)
+        sproutSpawnAccumPx += moveDistPx
+        if (sproutSpawnAccumPx >= SPROUT_SPAWN_DIST_PX) {
+          if (pointerIsOnLine(point.x, point.y)) {
+            const nowMs = performance.now()
+            spawnSprout(sprouts, point.x, point.y, nowMs)
+            if (moveDistPx > SPROUT_SPAWN_BURST_DIST_PX) spawnSprout(sprouts, point.x, point.y, nowMs)
+          }
+          sproutSpawnAccumPx = 0
+        }
+      }
+      lastSproutSpawnPoint = point
     }
 
     function handlePointerLeave() {
       pointerState.current = null
-      if (reduceMotion) renderCurrentFrame()
     }
 
-    if (pointerFine && heroEl) {
-      heroEl.addEventListener('pointermove', handlePointerMove)
-      heroEl.addEventListener('pointerleave', handlePointerLeave)
+    if (trail) {
+      window.addEventListener('pointermove', handlePointerMove, { passive: true })
+      document.documentElement.addEventListener('pointerleave', handlePointerLeave)
+    }
+
+    // Reduced motion has no rAF loop, so user-driven scrolls redraw the live page-space offset and opening directly.
+    let scrollTicking = false
+    let scrollFrameId = 0
+    function handleScroll() {
+      if (scrollTicking) return
+      scrollTicking = true
+      scrollFrameId = requestAnimationFrame(() => {
+        scrollTicking = false
+        const frame = getStoryFrame()
+        renderCurrentFrame(frame)
+      })
+    }
+    if (reduceMotion) {
+      window.addEventListener('scroll', handleScroll, { passive: true })
     }
 
     let animationFrameId = 0
@@ -504,8 +604,12 @@ export default function LineFigures() {
       const tick = (now: number) => {
         const dt = Math.min(0.05, (now - lastFrameMs) / 1000)
         lastFrameMs = now
-        elapsed += dt
-        renderCurrentFrame()
+        const frame = getStoryFrame()
+        displayedOpen = dampTowards(displayedOpen, frame.timeline.open, dt)
+        displayedExtend = dampTowards(displayedExtend, frame.timeline.extend, dt)
+        if (!frame.timeline.frozen) elapsed += dt
+        const pulse = pulseAt(now)
+        renderCurrentFrame(frame, pulse)
         animationFrameId = requestAnimationFrame(tick)
       }
       animationFrameId = requestAnimationFrame(tick)
@@ -514,12 +618,17 @@ export default function LineFigures() {
     return () => {
       resizeObserver.disconnect()
       if (animationFrameId) cancelAnimationFrame(animationFrameId)
-      if (pointerFine && heroEl) {
-        heroEl.removeEventListener('pointermove', handlePointerMove)
-        heroEl.removeEventListener('pointerleave', handlePointerLeave)
+      if (trail) {
+        window.removeEventListener('pointermove', handlePointerMove)
+        document.documentElement.removeEventListener('pointerleave', handlePointerLeave)
       }
+      if (reduceMotion) {
+        window.removeEventListener('scroll', handleScroll)
+        if (scrollFrameId) cancelAnimationFrame(scrollFrameId)
+      }
+      canvas.style.visibility = ''
     }
-  }, [])
+  }, [getStoryFrame])
 
   return <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
 }

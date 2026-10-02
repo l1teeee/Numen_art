@@ -1,0 +1,43 @@
+.descent {
+  position: relative;
+  height: 160vh;
+  height: 160svh;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.firefly {
+  position: absolute;
+  z-index: 1;
+  border-radius: 50%;
+  background: #fff;
+  will-change: transform, opacity;
+  animation-name: fireflyFloat, fireflyTwinkle;
+  animation-timing-function: ease-in-out, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+  animation-direction: alternate, alternate;
+}
+
+@keyframes fireflyFloat {
+  from {
+    transform: translate(0, 0);
+  }
+  to {
+    transform: translate(var(--drift-x, 0), -48px);
+  }
+}
+
+@keyframes fireflyTwinkle {
+  from {
+    opacity: var(--twinkle-min, 0.15);
+  }
+  to {
+    opacity: var(--twinkle-max, 0.5);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .firefly {
+    animation: none;
+  }
+}

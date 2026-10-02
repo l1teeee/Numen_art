@@ -6,6 +6,7 @@
   min-height: 560px;
   overflow: hidden;
   background: #000;
+  /* No z-index: the fixed canvas sits above the background layers and below the hero content. */
 }
 
 .center {
@@ -36,6 +37,28 @@
   color: rgba(255, 255, 255, 0.55);
 }
 
+.wordMask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  /* Bottom padding + matching negative margin give descenders room inside
+     the overflow-hidden box without shifting surrounding line layout. */
+  padding-bottom: 0.2em;
+  margin-bottom: -0.2em;
+}
+
+.wordInner {
+  display: inline-block;
+  transform: translateY(115%);
+  animation: word-reveal 850ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes word-reveal {
+  to {
+    transform: translateY(0);
+  }
+}
+
 .description {
   margin: 20px auto 0;
   max-width: 460px;
@@ -45,11 +68,17 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+.buttonEntrance {
+  display: inline-block;
+  margin-top: 32px;
+}
+
 .button {
+  --mx: 0px;
+  --my: 0px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 32px;
   background: #fff;
   border-radius: 40px;
   padding: 14px 22px;
@@ -57,11 +86,12 @@
   font-weight: 500;
   color: #000;
   text-decoration: none;
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transform: translate(var(--mx), var(--my));
+  transition: transform 250ms ease, box-shadow 200ms ease;
 }
 
 .button:hover {
-  transform: scale(1.03);
+  transform: translate(var(--mx), var(--my)) scale(1.03);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
@@ -83,34 +113,47 @@
   transform: translate(2px, -2px);
 }
 
-.scrollChevron {
+.scrollCue {
   position: absolute;
   bottom: calc(28px + env(safe-area-inset-bottom));
   left: 50%;
   z-index: 3;
-  width: 20px;
-  height: 20px;
-  opacity: 0.6;
-  animation: chevron-bob 2s ease-in-out infinite;
+  width: 12px;
+  height: 48px;
+  transform: translateX(-50%);
+  opacity: calc(0.6 * (1 - var(--scrolled, 0)));
+  transition: opacity 250ms ease;
 }
 
-.scrollChevron path {
+.scrollCueSvg {
+  display: block;
+}
+
+.scrollCueBase {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.scrollCueTravel {
   fill: none;
   stroke: #fff;
   stroke-width: 1.5;
   stroke-linecap: round;
-  stroke-linejoin: round;
+  stroke-dasharray: 26 74;
+  animation: scroll-cue-travel 2.4s ease-in-out infinite;
 }
 
-@keyframes chevron-bob {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(4px); }
+@keyframes scroll-cue-travel {
+  from { stroke-dashoffset: 126; }
+  to { stroke-dashoffset: 26; }
 }
 
 .fadeUp {
   opacity: 0;
-  transform: translateY(12px);
-  animation: fade-up 700ms ease-out forwards;
+  transform: translateY(16px);
+  animation: fade-up 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 @keyframes fade-up {
@@ -121,6 +164,11 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .wordInner {
+    animation: none;
+    transform: none;
+  }
+
   .fadeUp {
     animation: none;
     opacity: 1;
@@ -131,8 +179,12 @@
     transition: none;
   }
 
-  .scrollChevron {
+  .scrollCue {
+    transition: none;
+  }
+
+  .scrollCueTravel {
     animation: none;
-    transform: translateX(-50%);
+    display: none;
   }
 }

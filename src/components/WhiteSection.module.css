@@ -1,0 +1,360 @@
+.white {
+  position: relative;
+  z-index: 4;
+  /* clip not hidden - overflow:hidden makes this the sticky child's scrollport and kills the pin */
+  overflow: clip;
+  color: #000;
+  background: #fff;
+  border-radius: 0;
+}
+
+/* holds the video-wall intro pinned for one viewport of scroll while the
+   wall unblurs - the section-level line (z-index 1) renders above it */
+.introStage {
+  position: relative;
+  z-index: 0;
+  height: 200vh;
+  height: 200svh;
+}
+
+.introSticky {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+  background: #000;
+}
+
+.intro {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.title {
+  margin: 0;
+  color: #000;
+  font-weight: 600;
+  font-size: clamp(34px, 5.2vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.titleMask {
+  display: block;
+  overflow: hidden;
+}
+
+.titleLine {
+  display: inline-block;
+  transform: translateY(110%);
+  transition: transform 850ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.titleLine2 {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.intro.visible .titleLine {
+  transform: translateY(0);
+}
+
+/* living gradient inside the letters - falls back to plain black/grey text
+   on browsers without background-clip: text support */
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .titleLine,
+  .titleLine2 {
+    background-image: linear-gradient(100deg, #4f46e5, #a855f7, #2dd4bf, #fb7185, #4f46e5);
+    background-size: 320% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    animation: gradientDrift 14s ease-in-out infinite alternate;
+  }
+
+  .titleLine2 {
+    animation-delay: -4s;
+  }
+}
+
+@keyframes gradientDrift {
+  from {
+    background-position: 0% 50%;
+  }
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+/* video behind the intro is busy and colorful - gradient text disappears into
+   it, so once a video is live the intro headline/description go flat white */
+.videoLive .titleLine,
+.videoLive .titleLine2 {
+  background: none;
+  -webkit-text-fill-color: #fff;
+  color: #fff;
+  animation: none;
+}
+
+.description {
+  max-width: 460px;
+  margin: 20px auto 0;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 700ms ease, transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.intro.visible .description {
+  opacity: 1;
+  transform: none;
+}
+
+.videoLive .description {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.closing {
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(40px, 8vw, 96px) 24px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 700ms ease, transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.closing.visible {
+  opacity: 1;
+  transform: none;
+}
+
+.closingBg {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.closingVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(1);
+  opacity: 0;
+  transition: opacity 800ms ease;
+}
+
+.closingVideoLive {
+  opacity: 1;
+}
+
+/* dark overlay over the light footage once the video takes over - keeps text crisp and
+   lets the white-inverted button (see .closingDark below) read against it */
+.closingVeil {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 800ms ease;
+}
+
+.closingVeilLive {
+  opacity: 1;
+}
+
+/* vintage film grain over the video, below the veil - same feTurbulence data-URI recipe as
+   WhitePractices' .filmGrain (CSS modules do not share classes across files) */
+.filmGrain {
+  position: absolute;
+  inset: -80px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0.33 0.33 0.33 0 0'/%3E%3CfeComponentTransfer%3E%3CfeFuncA type='table' tableValues='0 0 0 0 0 0.6 0.9 1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 160px 160px;
+  mix-blend-mode: screen;
+  will-change: transform;
+  opacity: 0;
+  transition: opacity 800ms ease;
+  animation: filmFlicker 0.9s steps(1, end) infinite;
+}
+
+.filmGrainLive {
+  opacity: 0.19;
+}
+
+@keyframes filmFlicker {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  12.5% {
+    transform: translate3d(-45px, 60px, 0);
+  }
+  25% {
+    transform: translate3d(30px, -25px, 0);
+  }
+  37.5% {
+    transform: translate3d(-60px, -40px, 0);
+  }
+  50% {
+    transform: translate3d(50px, 35px, 0);
+  }
+  62.5% {
+    transform: translate3d(-20px, 70px, 0);
+  }
+  75% {
+    transform: translate3d(40px, -55px, 0);
+  }
+  87.5% {
+    transform: translate3d(-35px, 15px, 0);
+  }
+}
+
+.closingContent {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.closingTitle {
+  margin: 0;
+  color: #000;
+  font-weight: 600;
+  font-size: clamp(34px, 5.2vw, 76px);
+  line-height: 1.02;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 32px;
+  background: #000;
+  border-radius: 40px;
+  padding: 14px 22px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+  text-decoration: none;
+  transition: transform 200ms ease, box-shadow 200ms ease, background 200ms ease, color 200ms ease;
+}
+
+/* video is live: the section goes dark, so title/credit flip to white and the button
+   inverts to a white pill - the travelling line (white via difference blend) then
+   visually merges into the button instead of reading as white-on-black */
+.closingDark .closingTitle {
+  color: #fff;
+}
+
+.closingDark .footer {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.closingDark .button {
+  background: #fff;
+  color: #000;
+}
+
+.closingDark .buttonArrow path {
+  stroke: #000;
+}
+
+.button:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+.buttonArrow {
+  width: 12px;
+  height: 12px;
+  transition: transform 200ms ease;
+}
+
+.buttonArrow path {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.button:hover .buttonArrow {
+  transform: translate(2px, -2px);
+}
+
+.footer {
+  margin: 24px 0 0;
+  color: rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+}
+
+@media (max-width: 810px) {
+  .closing {
+    padding: 48px 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .introStage {
+    height: 100vh;
+    height: 100svh;
+  }
+
+  .titleLine {
+    transform: none;
+    transition: none;
+  }
+
+  .titleLine,
+  .titleLine2 {
+    animation: none;
+  }
+
+  .description {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .closing {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .button {
+    transition: none;
+  }
+
+  .buttonArrow {
+    transition: none;
+  }
+
+  .filmGrain {
+    animation: none;
+  }
+}

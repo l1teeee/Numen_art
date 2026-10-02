@@ -25,3 +25,9 @@ dist-ssr
 
 .vercel
 .env*
+
+# Delegated agent task tracking
+.agents/
+
+# Uncompressed source videos (web versions live in public/media)
+media-originals/
