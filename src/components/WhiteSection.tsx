@@ -36,7 +36,10 @@ export default function WhiteSection({ ref }: { ref?: Ref<HTMLElement> }) {
   const buttonRef = useRef<HTMLAnchorElement>(null)
   const [videoLive, setVideoLive] = useState(false)
   const [allowVideo] = useState(() => !window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+  const [isMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
   const [closingVideoReady, setClosingVideoReady] = useState(false)
+  // the 1200x900 closing loop is upscaled ~3x on a portrait phone and reads as a blurry grey wash
+  const allowClosingVideo = allowVideo && !isMobile
 
   useEffect(() => {
     const targets = [introRef.current, closingRef.current].filter(
@@ -116,7 +119,7 @@ export default function WhiteSection({ ref }: { ref?: Ref<HTMLElement> }) {
   useEffect(() => {
     const container = closingRef.current
     const video = closingVideoRef.current
-    if (!container || !video || !allowVideo) return
+    if (!container || !video || !allowClosingVideo) return
 
     // the closing loop keeps decoding while far off-screen - only play it near the viewport
     const playbackObserver = new IntersectionObserver(
@@ -134,7 +137,7 @@ export default function WhiteSection({ ref }: { ref?: Ref<HTMLElement> }) {
 
     playbackObserver.observe(container)
     return () => playbackObserver.disconnect()
-  }, [allowVideo])
+  }, [allowClosingVideo])
 
   return (
     <section
@@ -173,9 +176,9 @@ export default function WhiteSection({ ref }: { ref?: Ref<HTMLElement> }) {
 
       <WhitePractices />
 
-      <div className={styles.closing} ref={closingRef}>
+      <div className={`${styles.closing} ${isMobile ? styles.closingSolid : ''}`} ref={closingRef}>
         <div className={styles.closingBg} aria-hidden="true">
-          {allowVideo && (
+          {allowClosingVideo && (
             <video
               ref={closingVideoRef}
               className={`${styles.closingVideo} ${closingVideoReady ? styles.closingVideoLive : ''}`}
@@ -189,20 +192,20 @@ export default function WhiteSection({ ref }: { ref?: Ref<HTMLElement> }) {
               onCanPlay={() => setClosingVideoReady(true)}
             />
           )}
-          {allowVideo && (
+          {allowClosingVideo && (
             <div
               className={`${styles.filmGrain} ${closingVideoReady ? styles.filmGrainLive : ''}`}
               aria-hidden="true"
             />
           )}
         </div>
-        {allowVideo && (
+        {allowClosingVideo && (
           <div
             className={`${styles.closingVeil} ${closingVideoReady ? styles.closingVeilLive : ''}`}
             aria-hidden="true"
           />
         )}
-        <div className={`${styles.closingContent} ${closingVideoReady ? styles.closingDark : ''}`}>
+        <div className={`${styles.closingContent} ${closingVideoReady || isMobile ? styles.closingDark : ''}`}>
           <p className={styles.closingTitle}>Let's draw the next one.</p>
           <a
             ref={buttonRef}

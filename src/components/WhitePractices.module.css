@@ -2,7 +2,7 @@
   position: relative;
   z-index: 1;
   height: 100vh;
-  height: 100svh;
+  height: 100lvh;
   background: transparent;
 }
 
@@ -449,6 +449,29 @@
     max-width: none;
     transform: none;
     text-align: left;
+  }
+}
+
+/* the stage background is transparent over the white section, so the aurora stays as the
+   pre-video placeholder - only its animation is dropped. Blob 5 is centered by its keyframe
+   transform, so that offset moves to a static rule. Grain blends over a playing video on
+   every frame, too costly for phone GPUs */
+@media (max-width: 810px), (pointer: coarse) {
+  .auroraBlob {
+    animation: none;
+    will-change: auto;
+  }
+
+  .auroraBlob5 {
+    transform: translate(-50%, -50%);
+  }
+
+  .filmGrain {
+    display: none;
+  }
+
+  .dustDot {
+    animation: none;
   }
 }
 

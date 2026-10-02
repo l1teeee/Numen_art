@@ -76,7 +76,11 @@ export default function WhiteVideoWall({ onLiveChange }: { onLiveChange?: (anyLi
     >
       {clipNumbers.map((clipNumber, position) => {
         return (
-          <div key={clipNumber} className={styles.panel} style={{ transitionDelay: `${position * 90}ms` }}>
+          <div
+            key={clipNumber}
+            className={`${styles.panel} ${liveStrips.has(clipNumber) ? styles.panelLive : ''}`}
+            style={{ transitionDelay: `${position * 90}ms` }}
+          >
             {allowVideo && (
               <video
                 ref={(node) => {

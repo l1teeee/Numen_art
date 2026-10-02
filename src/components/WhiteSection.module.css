@@ -21,7 +21,7 @@
   position: sticky;
   top: 0;
   height: 100vh;
-  height: 100svh;
+  height: 100lvh;
   overflow: hidden;
   background: #000;
 }
@@ -130,7 +130,7 @@
   position: relative;
   z-index: 1;
   min-height: 100vh;
-  min-height: 100svh;
+  min-height: 100lvh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -145,6 +145,12 @@
 .closing.visible {
   opacity: 1;
   transform: none;
+}
+
+/* phones skip the closing video (upscaled and blurry) - a solid black base keeps
+   the white line and white text readable */
+.closingSolid {
+  background: #000;
 }
 
 .closingBg {

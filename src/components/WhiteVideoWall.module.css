@@ -69,6 +69,11 @@
   opacity: 1;
 }
 
+/* drifting background-position repaints the panel every frame - pointless once the video covers it */
+.panelLive {
+  animation: none;
+}
+
 @keyframes panelDrift {
   from {
     background-position: 0% 0%;

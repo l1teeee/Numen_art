@@ -53,6 +53,8 @@ const KEN_BURNS_DURATIONS = [20, 24, 28]
 
 const TRANSITION_DURATION = 0.12
 
+const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
+
 export default function WhitePractices() {
   const stageRef = useRef<HTMLDivElement>(null)
   const lineWrapRef = useRef<SVGGElement>(null)
@@ -86,6 +88,8 @@ export default function WhitePractices() {
       if (!stage) return
 
       const mm = gsap.matchMedia()
+      // snap fights touch momentum and makes the pinned stage jerk on phones
+      const isMobile = window.matchMedia(MOBILE_QUERY).matches
 
       mm.add('(prefers-reduced-motion: no-preference)', () => {
         // the line never sits frozen, even while the scrubbed sequence is idle
@@ -154,7 +158,9 @@ export default function WhitePractices() {
             pin: true,
             anticipatePin: 1,
             scrub: 0.9,
-            snap: { snapTo: [0, 0.49, 1], directional: false, duration: { min: 0.2, max: 0.6 }, delay: 0.15, ease: 'power1.inOut' },
+            snap: isMobile
+              ? undefined
+              : { snapTo: [0, 0.49, 1], directional: false, duration: { min: 0.2, max: 0.6 }, delay: 0.15, ease: 'power1.inOut' },
           },
         })
 
