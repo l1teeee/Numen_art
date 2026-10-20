@@ -147,8 +147,9 @@
   transform: none;
 }
 
-/* phones skip the closing video (upscaled and blurry) - a solid black base keeps
-   the white line and white text readable */
+/* phones draw the travelling line as plain white (no difference blend, see WhiteLine.module.css),
+   so a black base under the closing video keeps the line and white text readable while the
+   video loads or when the browser blocks autoplay (e.g. iOS Low Power Mode) */
 .closingSolid {
   background: #000;
 }
@@ -316,6 +317,14 @@
   margin: 24px 0 0;
   color: rgba(0, 0, 0, 0.4);
   font-size: 13px;
+}
+
+/* grain blends over the playing video every frame, too costly for phone GPUs - same call as
+   WhitePractices.module.css makes for its own film grain */
+@media (max-width: 810px), (pointer: coarse) {
+  .filmGrain {
+    display: none;
+  }
 }
 
 @media (max-width: 810px) {
