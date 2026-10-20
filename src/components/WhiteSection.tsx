@@ -3,6 +3,7 @@ import type { Ref } from 'react'
 import styles from './WhiteSection.module.css'
 import WhiteLine from './WhiteLine'
 import WhitePractices from './WhitePractices'
+import WhiteProjects from './WhiteProjects'
 import WhiteVideoWall from './WhiteVideoWall'
 
 // merges the section's own internal ref (WhiteLine needs the live DOM node
@@ -173,6 +174,8 @@ export default function WhiteSection({ ref }: { ref?: Ref<HTMLElement> }) {
       <WhiteLine sectionRef={sectionRef} ctaRef={buttonRef} />
 
       <WhitePractices />
+
+      <WhiteProjects />
 
       <div className={`${styles.closing} ${isMobile ? styles.closingSolid : ''}`} ref={closingRef}>
         <div className={styles.closingBg} aria-hidden="true">

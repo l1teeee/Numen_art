@@ -1,0 +1,371 @@
+.projects {
+  position: relative;
+  /* paints under WhiteLine's svg at z-index 5 so the travelling line crosses the work */
+  z-index: 1;
+  /* black ground keeps the travelling line visible on phones, where it is plain white */
+  background: #000;
+  color: #fff;
+}
+
+.header {
+  padding: clamp(120px, 18vh, 200px) 6% clamp(56px, 9vh, 104px);
+}
+
+.eyebrow {
+  margin: 0 0 18px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.5);
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 700ms ease, transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.title {
+  margin: 0;
+  font-weight: 600;
+  font-size: clamp(44px, 7vw, 112px);
+  line-height: 1;
+  letter-spacing: -0.055em;
+  text-wrap: balance;
+}
+
+.titleMask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+
+.titleLine {
+  display: inline-block;
+  transform: translateY(110%);
+  transition: transform 850ms cubic-bezier(0.22, 1, 0.36, 1);
+  transition-delay: 120ms;
+}
+
+.header.visible .eyebrow {
+  opacity: 1;
+  transform: none;
+}
+
+.header.visible .titleLine {
+  transform: none;
+}
+
+.stage {
+  position: relative;
+  height: 100vh;
+  height: 100lvh;
+  overflow: hidden;
+  background: #000;
+}
+
+.panel {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  transform-origin: 50% 50%;
+  /* stacked panels must not swallow clicks meant for the panel underneath - only links opt back in */
+  pointer-events: none;
+}
+
+.frame {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.mediaZoom {
+  position: absolute;
+  inset: 0;
+}
+
+.poster,
+.video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video {
+  opacity: 0;
+  transition: opacity 600ms ease;
+}
+
+.videoLive {
+  opacity: 1;
+}
+
+.veil {
+  position: absolute;
+  inset: 0;
+  /* flat veil for text contrast like the practices - no gradients */
+  background: rgba(0, 0, 0, 0.36);
+}
+
+.shade {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+}
+
+/* light footage keeps its own look - dark type over a soft white veil instead of a dark veil */
+.panelLight .veil {
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.panelLight .info {
+  color: #000;
+}
+
+.panelLight .index {
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.panelLight .summary {
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.panelLight .visit {
+  background: #000;
+  color: #fff;
+}
+
+.panelLight .visitArrow path {
+  stroke: #fff;
+}
+
+.info {
+  position: absolute;
+  left: 6%;
+  right: 6%;
+  bottom: 9%;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 48px;
+}
+
+.heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.index {
+  margin-bottom: 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+.name {
+  margin: 0;
+  font-size: clamp(64px, 11vw, 176px);
+  font-weight: 600;
+  line-height: 0.92;
+  letter-spacing: -0.06em;
+}
+
+.nameMask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+
+.nameLine {
+  display: inline-block;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 360px;
+  padding-bottom: 10px;
+}
+
+.summary {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.visit {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 24px;
+  padding: 12px 20px;
+  border-radius: 40px;
+  background: #fff;
+  color: #000;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  pointer-events: auto;
+  transition: transform 200ms ease;
+}
+
+.visitArrow {
+  width: 12px;
+  height: 12px;
+  transition: transform 200ms ease;
+}
+
+.visitArrow path {
+  fill: none;
+  stroke: #000;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.counter {
+  position: absolute;
+  top: 32px;
+  right: 6%;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+.counterMask {
+  display: block;
+  height: 1.2em;
+  overflow: hidden;
+}
+
+.counterTrack {
+  display: flex;
+  flex-direction: column;
+}
+
+.counterTrack > span {
+  display: block;
+  height: 1.2em;
+}
+
+.counterTotal {
+  opacity: 0.55;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .visit:hover {
+    transform: scale(1.03);
+  }
+
+  .visit:hover .visitArrow {
+    transform: translate(2px, -2px);
+  }
+}
+
+@media (max-width: 810px) {
+  .header {
+    padding: 96px 20px 48px;
+  }
+
+  .info {
+    left: 20px;
+    right: 20px;
+    bottom: 32px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 18px;
+  }
+
+  .name {
+    font-size: clamp(56px, 17vw, 96px);
+  }
+
+  .details {
+    max-width: none;
+    padding-bottom: 0;
+  }
+
+  .summary {
+    font-size: 15px;
+  }
+
+  .visit {
+    margin-top: 18px;
+  }
+
+  .counter {
+    top: 24px;
+    right: 20px;
+  }
+
+  .veil {
+    /* the 16:10 loops are cropped hard on portrait screens, so text sits over busier footage */
+    background: rgba(0, 0, 0, 0.42);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage {
+    height: auto;
+    overflow: visible;
+    padding-bottom: 96px;
+  }
+
+  .panel {
+    position: relative;
+    inset: auto;
+    margin: 0 6% 48px;
+    border-radius: 32px;
+    pointer-events: auto;
+  }
+
+  .frame {
+    position: relative;
+    inset: auto;
+    aspect-ratio: 16 / 10;
+  }
+
+  .counter {
+    display: none;
+  }
+
+  .titleLine {
+    transform: none;
+    transition: none;
+  }
+
+  .eyebrow {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .video,
+  .visit,
+  .visitArrow {
+    transition: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) and (max-width: 810px) {
+  .panel {
+    margin: 0 20px 32px;
+    border-radius: 24px;
+  }
+
+  .frame {
+    aspect-ratio: 4 / 5;
+  }
+}
