@@ -49,13 +49,11 @@
   mix-blend-mode: difference;
 }
 
-/* the heartbeat and the difference blend both re-composite the whole stretched section
-   against the videos every frame, too costly on touch and small screens - every region
-   under the line is dark there, so a plain white stroke stays visible */
+/* the heartbeat re-composites the whole stretched section against the videos every frame, too costly on
+   touch and small screens - the difference blend stays so the line still reads over the white project card */
 @media (max-width: 810px), (pointer: coarse) {
   .line {
     animation: none;
-    mix-blend-mode: normal;
   }
 }
 
