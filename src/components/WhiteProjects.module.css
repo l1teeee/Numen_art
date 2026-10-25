@@ -64,9 +64,16 @@
 .ground {
   position: absolute;
   inset: 0;
-  background: #fff;
   clip-path: inset(100% 0% 0% 0% round 32px 32px 0px 0px);
   pointer-events: none;
+}
+
+.groundLight {
+  background: #fff;
+}
+
+.groundDark {
+  background: #000;
 }
 
 .panel {
@@ -177,10 +184,6 @@
   color: rgba(0, 0, 0, 0.5);
 }
 
-.panelOnLight .summary {
-  color: rgba(0, 0, 0, 0.7);
-}
-
 .panelOnLight .visit {
   background: #000;
   color: #fff;
@@ -234,18 +237,10 @@
   padding-bottom: 10px;
 }
 
-.summary {
-  margin: 0;
-  font-size: 16px;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.75);
-}
-
 .visit {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  margin-top: 24px;
   padding: 12px 20px;
   border-radius: 40px;
   background: #fff;
@@ -330,7 +325,8 @@
   }
 
   .panel {
-    padding: 12px 12px 28px;
+    /* phone browser bars (iOS 26 floating tab bar, older bottom toolbars) cover ~40px of the pinned panel, so the visit button needs extra clearance */
+    padding: 12px 12px 72px;
     gap: 20px;
   }
 
@@ -352,14 +348,6 @@
   .details {
     max-width: none;
     padding-bottom: 0;
-  }
-
-  .summary {
-    font-size: 15px;
-  }
-
-  .visit {
-    margin-top: 18px;
   }
 
   .counter {
@@ -399,6 +387,10 @@
     background: #fff;
   }
 
+  .panelOnLight + .panel:not(.panelOnLight) {
+    padding-top: 64px;
+  }
+
   .frame {
     flex: none;
     aspect-ratio: 16 / 10;
@@ -435,6 +427,10 @@
   .panelOnLight {
     padding-top: 48px;
     padding-bottom: 48px;
+  }
+
+  .panelOnLight + .panel:not(.panelOnLight) {
+    padding-top: 48px;
   }
 
   .frame {

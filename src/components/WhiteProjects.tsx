@@ -6,11 +6,18 @@ import styles from './WhiteProjects.module.css'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
 
-const PROJECTS = [
+type Project = {
+  index: string
+  name: string
+  url: string
+  media: string
+  ground: 'dark' | 'light'
+}
+
+const PROJECTS: Project[] = [
   {
     index: '01',
     name: 'XIT',
-    summary: 'Systems in motion. A generative studio site where one living field is redrawn in realtime as ASCII, dots, halftone and dither.',
     url: 'https://xit-nu.vercel.app/',
     media: 'project-xit',
     ground: 'dark',
@@ -18,24 +25,42 @@ const PROJECTS = [
   {
     index: '02',
     name: 'Memoria',
-    summary: 'Memories that fade into light. A scroll poem in charcoal and dust that reveals itself one line at a time.',
     url: 'https://cosmos-carboncillo.vercel.app/',
     media: 'project-memoria',
     ground: 'light',
+  },
+  {
+    index: '03',
+    name: 'LOYAL',
+    url: 'https://loyal-omega-nine.vercel.app/',
+    media: 'project-loyal',
+    ground: 'dark',
   },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
 
-// the spacer tween fixes the timeline length at 1 so these positions are fractions of the pinned scroll
 const WIPE_START = 0.45
-const WIPE_END = 0.8
+const WIPE_DURATION = 0.35
+const PROJECT_STEP = 0.5
+const FINAL_HOLD = 0.2
+const TIMELINE_LENGTH = WIPE_START + (PROJECTS.length - 2) * PROJECT_STEP + WIPE_DURATION + FINAL_HOLD
 const PULL_BACK_SCALE = 0.94
+
+function transitionStart(projectIndex: number) {
+  return WIPE_START + (projectIndex - 1) * PROJECT_STEP
+}
+
+function getRequiredRefs<T>(refs: Array<T | null>, count: number) {
+  const required = Array.from({ length: count }, (_, index) => refs[index])
+  if (!required.every((ref): ref is T => ref !== null && ref !== undefined)) return null
+  return required
+}
 
 export default function WhiteProjects() {
   const headerRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
-  const groundRef = useRef<HTMLDivElement>(null)
+  const groundRefs = useRef<(HTMLDivElement | null)[]>([])
   const frameRefs = useRef<(HTMLDivElement | null)[]>([])
   const zoomRefs = useRef<(HTMLDivElement | null)[]>([])
   const frostRef = useRef<HTMLDivElement>(null)
@@ -96,30 +121,33 @@ export default function WhiteProjects() {
         const wipeTo = `inset(0% 0% 0% 0% round ${cardRadius}px ${cardRadius}px 0px 0px)`
         const groundFrom = `inset(100% 0% 0% 0% round ${cardRadius * 2}px ${cardRadius * 2}px 0px 0px)`
         const groundTo = 'inset(0% 0% 0% 0% round 0px 0px 0px 0px)'
-        const [firstFrame, secondFrame] = frameRefs.current
-        const [firstZoom, secondZoom] = zoomRefs.current
+        const frames = getRequiredRefs(frameRefs.current, PROJECTS.length)
+        const zooms = getRequiredRefs(zoomRefs.current, PROJECTS.length)
+        const grounds = getRequiredRefs(groundRefs.current, PROJECTS.length - 1)
+        const shades = getRequiredRefs(shadeRefs.current, PROJECTS.length - 1)
+        const infos = getRequiredRefs(infoRefs.current, PROJECTS.length)
+        const names = getRequiredRefs(nameRefs.current, PROJECTS.length)
+        const indexes = getRequiredRefs(indexRefs.current, PROJECTS.length)
+        const details = getRequiredRefs(detailRefs.current, PROJECTS.length)
         const frost = frostRef.current
-        const [firstShade] = shadeRefs.current
-        const [firstInfo, secondInfo] = infoRefs.current
-        const [firstName, secondName] = nameRefs.current
-        const [firstIndex, secondIndex] = indexRefs.current
-        const [firstDetails, secondDetails] = detailRefs.current
         const counter = counterRef.current
         const counterTrack = counterTrackRef.current
-        const ground = groundRef.current
-        const firstPanel = firstFrame?.parentElement
+        const firstPanel = frames?.[0].parentElement
 
         if (
-          !firstFrame || !secondFrame || !firstZoom || !secondZoom || !frost ||
-          !firstShade || !firstInfo || !secondInfo || !firstName || !secondName ||
-          !firstIndex || !secondIndex || !firstDetails || !secondDetails || !counter || !counterTrack || !ground || !firstPanel
+          !frames || !zooms || !grounds || !shades || !infos || !names || !indexes ||
+          !details || !frost || !counter || !counterTrack || !firstPanel
         ) return
 
-        const firstCard = firstFrame
+        const firstCard = frames[0]
+        const firstZoom = zooms[0]
+        const firstName = names[0]
+        const firstIndex = indexes[0]
+        const firstDetails = details[0]
         const panel = firstPanel
         const counterElement = counter
         const firstChars = Array.from(firstName.children)
-        const secondChars = Array.from(secondName.children)
+        const counterStep = 100 / PROJECTS.length
 
         function counterOffsetFromCardCenter() {
           return {
@@ -138,10 +166,12 @@ export default function WhiteProjects() {
 
         // only the projects actually on screen decode their loops
         function syncVideoPlayback() {
-          const progress = tl ? tl.progress() : 0
+          const time = tl ? tl.time() : 0
           videoRefs.current.forEach((video, i) => {
             if (!video) return
-            const onScreen = i === 0 ? progress < WIPE_END : progress > WIPE_START
+            const afterPreviousTransitionStarts = i === 0 || time > transitionStart(i)
+            const beforeNextTransitionEnds = i === PROJECTS.length - 1 || time < transitionStart(i + 1) + WIPE_DURATION
+            const onScreen = afterPreviousTransitionStarts && beforeNextTransitionEnds
             const shouldPlay = stageNearViewport && onScreen
             if (shouldPlay && video.paused) video.play().catch(() => {})
             else if (!shouldPlay && !video.paused) video.pause()
@@ -153,7 +183,7 @@ export default function WhiteProjects() {
           scrollTrigger: {
             trigger: stage,
             start: 'top top',
-            end: '+=300%',
+            end: `+=${300 * TIMELINE_LENGTH}%`,
             pin: true,
             anticipatePin: 1,
             scrub: 1,
@@ -161,39 +191,62 @@ export default function WhiteProjects() {
           },
         })
 
-        tl.to({}, { duration: 1 }, 0)
-        tl.fromTo(firstFrame, { clipPath: windowFrom, y: () => cardCenterShift() }, { clipPath: windowTo, y: 0, ease: 'power2.inOut', duration: 0.3 }, 0)
+        tl.to({}, { duration: TIMELINE_LENGTH }, 0)
+        tl.fromTo(firstCard, { clipPath: windowFrom, y: () => cardCenterShift() }, { clipPath: windowTo, y: 0, ease: 'power2.inOut', duration: 0.3 }, 0)
           .fromTo(firstZoom, { scale: 1.3 }, { scale: 1, ease: 'power2.out', duration: 0.3 }, 0)
           .fromTo(frost, { '--frost-blur': isMobile ? '10px' : '18px', autoAlpha: 1 }, { '--frost-blur': '0px', autoAlpha: 0, ease: 'power2.inOut', duration: 0.26 }, 0)
           .fromTo(firstChars, { yPercent: 110 }, { yPercent: 0, ease: 'power3.out', duration: 0.12, stagger: 0.015 }, 0.16)
           .fromTo(firstIndex, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.12 }, 0.16)
           .fromTo(counter, { autoAlpha: 0 }, { autoAlpha: 1, ease: 'power2.out', duration: 0.08 }, 0.16)
-          .fromTo(counterTrack, { yPercent: 50 }, { yPercent: 0, ease: 'power3.out', duration: 0.12 }, 0.16)
+          .fromTo(counterTrack, { yPercent: counterStep }, { yPercent: 0, ease: 'power3.out', duration: 0.12 }, 0.16)
           .fromTo(firstDetails, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.14 }, 0.22)
           .to(firstZoom, { scale: 1.04, ease: 'none', duration: WIPE_START - 0.3 }, 0.3)
-          .to(firstChars, { yPercent: -110, ease: 'power2.in', duration: 0.1, stagger: 0.01 }, WIPE_START)
-          .to(firstInfo, { autoAlpha: 0, y: -24, ease: 'power2.in', duration: 0.17 }, WIPE_START)
-          .fromTo(ground, { clipPath: groundFrom }, { clipPath: groundTo, ease: 'power2.inOut', duration: WIPE_END - WIPE_START }, WIPE_START)
-          .fromTo(secondFrame, { clipPath: wipeFrom }, { clipPath: wipeTo, ease: 'power2.inOut', duration: WIPE_END - WIPE_START }, WIPE_START)
-          .fromTo(secondZoom, { scale: 1.15, yPercent: 8 }, { scale: 1, yPercent: 0, ease: 'power2.inOut', duration: WIPE_END - WIPE_START }, WIPE_START)
-          .to(firstZoom, { scale: 1.1, yPercent: -6, ease: 'power2.inOut', duration: WIPE_END - WIPE_START }, WIPE_START)
-          .to(firstShade, { opacity: 0.4, ease: 'power2.inOut', duration: WIPE_END - WIPE_START }, WIPE_START)
-          .to([firstFrame, secondFrame], { scale: PULL_BACK_SCALE, ease: 'power2.inOut', duration: 0.17 }, WIPE_START)
-          .to(counter, {
-            x: () => (PULL_BACK_SCALE - 1) * counterOffsetFromCardCenter().x,
-            y: () => (PULL_BACK_SCALE - 1) * counterOffsetFromCardCenter().y,
-            scale: PULL_BACK_SCALE,
-            ease: 'power2.inOut',
-            duration: 0.17,
-          }, WIPE_START)
-          .to([firstFrame, secondFrame], { scale: 1, ease: 'power2.inOut', duration: 0.18 }, 0.62)
-          .to(counter, { x: 0, y: 0, scale: 1, ease: 'power2.inOut', duration: 0.18 }, 0.62)
-          .to(counterTrack, { yPercent: -50, ease: 'power2.inOut', duration: 0.15 }, 0.55)
-          .fromTo(secondInfo, { autoAlpha: 0 }, { autoAlpha: 1, ease: 'none', duration: 0.06 }, 0.6)
-          .fromTo(secondChars, { yPercent: 110 }, { yPercent: 0, ease: 'power3.out', duration: 0.12, stagger: 0.015 }, 0.64)
-          .fromTo(secondIndex, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.12 }, 0.64)
-          .fromTo(secondDetails, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.14 }, 0.7)
-          .to(secondZoom, { scale: 1.05, ease: 'none', duration: 1 - WIPE_END }, WIPE_END)
+
+        for (let projectIndex = 1; projectIndex < PROJECTS.length; projectIndex += 1) {
+          const start = transitionStart(projectIndex)
+          const end = start + WIPE_DURATION
+          const outgoingIndex = projectIndex - 1
+          const outgoingFrame = frames[outgoingIndex]
+          const incomingFrame = frames[projectIndex]
+          const outgoingZoom = zooms[outgoingIndex]
+          const incomingZoom = zooms[projectIndex]
+          // ground layers start at project 1, so the incoming project's layer sits one slot lower
+          const incomingGround = grounds[projectIndex - 1]
+          const outgoingShade = shades[outgoingIndex]
+          const outgoingInfo = infos[outgoingIndex]
+          const incomingInfo = infos[projectIndex]
+          const outgoingChars = Array.from(names[outgoingIndex].children)
+          const incomingChars = Array.from(names[projectIndex].children)
+          const incomingIndex = indexes[projectIndex]
+          const incomingDetails = details[projectIndex]
+          const driftDuration = projectIndex === PROJECTS.length - 1
+            ? FINAL_HOLD
+            : PROJECT_STEP - WIPE_DURATION
+
+          tl.to(outgoingChars, { yPercent: -110, ease: 'power2.in', duration: 0.1, stagger: 0.01 }, start)
+            .to(outgoingInfo, { autoAlpha: 0, y: -24, ease: 'power2.in', duration: 0.17 }, start)
+            .fromTo(incomingGround, { clipPath: groundFrom }, { clipPath: groundTo, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
+            .fromTo(incomingFrame, { clipPath: wipeFrom }, { clipPath: wipeTo, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
+            .fromTo(incomingZoom, { scale: 1.15, yPercent: 8 }, { scale: 1, yPercent: 0, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
+            .to(outgoingZoom, { scale: 1.1, yPercent: -6, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
+            .to(outgoingShade, { opacity: 0.4, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
+            .to([outgoingFrame, incomingFrame], { scale: PULL_BACK_SCALE, ease: 'power2.inOut', duration: 0.17 }, start)
+            .to(counter, {
+              x: () => (PULL_BACK_SCALE - 1) * counterOffsetFromCardCenter().x,
+              y: () => (PULL_BACK_SCALE - 1) * counterOffsetFromCardCenter().y,
+              scale: PULL_BACK_SCALE,
+              ease: 'power2.inOut',
+              duration: 0.17,
+            }, start)
+            .to([outgoingFrame, incomingFrame], { scale: 1, ease: 'power2.inOut', duration: 0.18 }, start + 0.17)
+            .to(counter, { x: 0, y: 0, scale: 1, ease: 'power2.inOut', duration: 0.18 }, start + 0.17)
+            .to(counterTrack, { yPercent: -projectIndex * counterStep, ease: 'power2.inOut', duration: 0.15 }, start + 0.1)
+            .fromTo(incomingInfo, { autoAlpha: 0 }, { autoAlpha: 1, ease: 'none', duration: 0.06 }, start + 0.15)
+            .fromTo(incomingChars, { yPercent: 110 }, { yPercent: 0, ease: 'power3.out', duration: 0.12, stagger: 0.015 }, start + 0.19)
+            .fromTo(incomingIndex, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.12 }, start + 0.19)
+            .fromTo(incomingDetails, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.14 }, start + 0.25)
+            .to(incomingZoom, { scale: 1.05, ease: 'none', duration: driftDuration }, end)
+        }
 
         const idleObserver = new IntersectionObserver(
           (entries) => {
@@ -225,7 +278,16 @@ export default function WhiteProjects() {
       </header>
 
       <div className={styles.stage} ref={stageRef}>
-        <div className={styles.ground} ref={groundRef} aria-hidden="true" />
+        {PROJECTS.slice(1).map((project, i) => (
+          <div
+            key={project.index}
+            className={`${styles.ground} ${project.ground === 'light' ? styles.groundLight : styles.groundDark}`}
+            ref={(node) => {
+              groundRefs.current[i] = node
+            }}
+            aria-hidden="true"
+          />
+        ))}
         {PROJECTS.map((project, i) => (
           <article
             key={project.index}
@@ -313,7 +375,6 @@ export default function WhiteProjects() {
                   detailRefs.current[i] = node
                 }}
               >
-                <p className={styles.summary}>{project.summary}</p>
                 <a className={styles.visit} href={project.url} target="_blank" rel="noopener">
                   <span>Visit site</span>
                   <svg className={styles.visitArrow} viewBox="0 0 12 12" aria-hidden="true">
