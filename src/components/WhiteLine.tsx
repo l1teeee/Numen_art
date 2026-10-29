@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import type { RefObject } from 'react'
 import styles from './WhiteLine.module.css'
 
@@ -9,117 +9,14 @@ import styles from './WhiteLine.module.css'
 // the draw complete before the practices stage, regardless of total section height
 const DRAW_COMPLETE_VIEWPORT_MULTIPLE = 1.8
 
-const MAX_DEVICE_PIXEL_RATIO = 2
 const TWO_PI = Math.PI * 2
 
 // how much the button center or section box may drift, in px, before the rAF watcher
 // below treats it as a real layout change and rebuilds the geometry
 const GEOMETRY_DRIFT_THRESHOLD_PX = 2
 
-// how densely the path is sampled to test pointer proximity against it
-const SPROUT_SAMPLE_COUNT = 140
-const SPROUT_PROXIMITY_PX = 26
-const SPROUT_SPAWN_DIST_PX = 14
-const SPROUT_MAX_ALIVE = 24
-const SPROUT_LEN_MIN_PX = 18, SPROUT_LEN_MAX_PX = 55
-const SPROUT_LIFE_MIN_MS = 900, SPROUT_LIFE_MAX_MS = 1800
-const SPROUT_CTRL_BOW_MIN = 0.2, SPROUT_CTRL_BOW_MAX = 0.5 // perpendicular bow, as a fraction of the sprout's own length
-const SPROUT_GROW_FRACTION = 0.18 // grows over the first 18% of life, then contracts over the rest
-const SPROUT_LINE_WIDTH = 1.2
-
-type Sprout = { x: number; y: number; angle: number; len: number; ctrlOffset: number; bornMs: number; lifeMs: number }
-
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value))
-}
-
-function randomBetween(min: number, max: number): number {
-  return min + Math.random() * (max - min)
-}
-
-// same recipe as LineFigures' cursor-trail sprouts: random angle/length/bow so a birth never
-// reads as a fixed pattern
-function spawnSprout(sprouts: Sprout[], x: number, y: number, bornMs: number) {
-  if (sprouts.length >= SPROUT_MAX_ALIVE) sprouts.shift()
-  const len = randomBetween(SPROUT_LEN_MIN_PX, SPROUT_LEN_MAX_PX)
-  const bowSign = Math.random() < 0.5 ? -1 : 1
-  sprouts.push({
-    x,
-    y,
-    angle: Math.random() * TWO_PI,
-    len,
-    ctrlOffset: bowSign * randomBetween(SPROUT_CTRL_BOW_MIN, SPROUT_CTRL_BOW_MAX) * len,
-    bornMs,
-    lifeMs: randomBetween(SPROUT_LIFE_MIN_MS, SPROUT_LIFE_MAX_MS),
-  })
-}
-
-function easeOutQuad(x: number): number {
-  return 1 - (1 - x) * (1 - x)
-}
-
-function easeInOutQuad(x: number): number {
-  return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2
-}
-
-// grows 0 -> 1 over the first SPROUT_GROW_FRACTION of life, then contracts 1 -> 0 over the rest
-function sproutProgress(age: number): number {
-  if (age < SPROUT_GROW_FRACTION) return easeOutQuad(age / SPROUT_GROW_FRACTION)
-  return 1 - easeInOutQuad((age - SPROUT_GROW_FRACTION) / (1 - SPROUT_GROW_FRACTION))
-}
-
-// draws only the leading [0, u] sub-curve of each sprout's quadratic, so the tip grows out
-// and then retracts back into the birth point instead of the stroke jumping. Mutates sprouts
-// in place with a swap-remove; returns true while any sprout is still alive.
-function drawSprouts(ctx: CanvasRenderingContext2D, sprouts: Sprout[]): boolean {
-  const nowMs = performance.now()
-  ctx.lineCap = 'round'
-  let i = 0
-  while (i < sprouts.length) {
-    const sprout = sprouts[i]
-    const age = (nowMs - sprout.bornMs) / sprout.lifeMs
-    if (age >= 1) {
-      sprouts[i] = sprouts[sprouts.length - 1]
-      sprouts.pop()
-      continue
-    }
-    const u = sproutProgress(age)
-    i++
-    if (u <= 0.001) continue
-
-    const endX = sprout.x + Math.cos(sprout.angle) * sprout.len
-    const endY = sprout.y + Math.sin(sprout.angle) * sprout.len
-    const midX = (sprout.x + endX) / 2
-    const midY = (sprout.y + endY) / 2
-    const ctrlX = midX - Math.sin(sprout.angle) * sprout.ctrlOffset
-    const ctrlY = midY + Math.cos(sprout.angle) * sprout.ctrlOffset
-
-    const leadCtrlX = sprout.x + (ctrlX - sprout.x) * u
-    const leadCtrlY = sprout.y + (ctrlY - sprout.y) * u
-    const oneMinusU = 1 - u
-    const tipX = oneMinusU * oneMinusU * sprout.x + 2 * oneMinusU * u * ctrlX + u * u * endX
-    const tipY = oneMinusU * oneMinusU * sprout.y + 2 * oneMinusU * u * ctrlY + u * u * endY
-
-    ctx.lineWidth = SPROUT_LINE_WIDTH
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.75 * (1 - age * 0.6)})`
-    ctx.beginPath()
-    ctx.moveTo(sprout.x, sprout.y)
-    ctx.quadraticCurveTo(leadCtrlX, leadCtrlY, tipX, tipY)
-    ctx.stroke()
-  }
-  return sprouts.length > 0
-}
-
-// nearest sampled path point to (x, y), as a plain loop over the flat [x0,y0,x1,y1,...] array
-function nearestPathDistance(points: number[], x: number, y: number): number {
-  let minDistSq = Infinity
-  for (let i = 0; i < points.length; i += 2) {
-    const dx = x - points[i]
-    const dy = y - points[i + 1]
-    const distSq = dx * dx + dy * dy
-    if (distSq < minDistSq) minDistSq = distSq
-  }
-  return Math.sqrt(minDistSq)
 }
 
 // path control points normalized to 0..1, scaled to the section's actual pixel box
@@ -240,47 +137,16 @@ export default function WhiteLine({
 }) {
   const svgRef = useRef<SVGSVGElement>(null)
   const pathRef = useRef<SVGPathElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  // sprouts only ever spawn on fine pointers, so touch devices skip the section-sized canvas entirely
-  const [pointerFine] = useState(() => window.matchMedia('(pointer: fine)').matches)
 
   useEffect(() => {
     const svg = svgRef.current
     const path = pathRef.current
     const section = sectionRef.current
-    const canvas = canvasRef.current
     const cta = ctaRef.current
     if (!svg || !path || !section || !cta) return
 
-    const ctx = canvas ? canvas.getContext('2d') : null
-    let sampledPoints: number[] = []
-    let canvasWidth = 0
-    let canvasHeight = 0
     let lastButtonCenter: Point | null = null
     let lastViewBoxSize: { width: number; height: number } | null = null
-
-    function resizeCanvas() {
-      if (!canvas || !ctx || !section) return
-      const { width, height } = section.getBoundingClientRect()
-      canvasWidth = width
-      canvasHeight = height
-      const dpr = Math.min(MAX_DEVICE_PIXEL_RATIO, Math.max(1, window.devicePixelRatio || 1))
-      canvas.width = Math.round(width * dpr)
-      canvas.height = Math.round(height * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-
-    // resamples the path into section-local px points, used to test pointer proximity
-    function sampleGeometry() {
-      if (!path) return
-      const totalLength = path.getTotalLength()
-      const points: number[] = []
-      for (let i = 0; i < SPROUT_SAMPLE_COUNT; i++) {
-        const point = path.getPointAtLength((i / (SPROUT_SAMPLE_COUNT - 1)) * totalLength)
-        points.push(point.x, point.y)
-      }
-      sampledPoints = points
-    }
 
     function updateGeometry() {
       if (!svg || !path || !section || !cta) return
@@ -302,14 +168,11 @@ export default function WhiteLine({
       lastViewBoxSize = { width, height }
       svg.setAttribute('viewBox', `0 0 ${width} ${height}`)
       path.setAttribute('d', buildPathD(width, height, buttonGeometry))
-      sampleGeometry()
-      resizeCanvas()
     }
 
     updateGeometry()
 
-    // reduced motion: line is already fully drawn via CSS, and sprouts (an animation) are
-    // skipped entirely below - no scroll listener or pointer tracking needed
+    // reduced motion: the line is already fully drawn via CSS
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       const resizeObserver = new ResizeObserver(() => updateGeometry())
       resizeObserver.observe(section)
@@ -385,63 +248,21 @@ export default function WhiteLine({
     )
     ctaVisibilityObserver.observe(cta)
 
-    // hover sprouts: only born when the cursor is close to the drawn path itself, not
-    // anywhere in the section - desktop-only (fine pointer), rAF runs only while alive
-    const sprouts: Sprout[] = []
-    let rafId = 0
-    let spawnAccumPx = 0
-    let lastSpawnPoint: { x: number; y: number } | null = null
-
-    function tick() {
-      if (!ctx) return
-      ctx.clearRect(0, 0, canvasWidth, canvasHeight)
-      const stillAlive = drawSprouts(ctx, sprouts)
-      rafId = stillAlive ? requestAnimationFrame(tick) : 0
-    }
-
-    function handlePointerMove(event: PointerEvent) {
-      if (!section) return
-      const rect = section.getBoundingClientRect()
-      const x = event.clientX - rect.left
-      const y = event.clientY - rect.top
-
-      if (lastSpawnPoint) spawnAccumPx += Math.hypot(x - lastSpawnPoint.x, y - lastSpawnPoint.y)
-      lastSpawnPoint = { x, y }
-      if (spawnAccumPx < SPROUT_SPAWN_DIST_PX) return
-      spawnAccumPx = 0
-
-      if (nearestPathDistance(sampledPoints, x, y) > SPROUT_PROXIMITY_PX) return
-
-      const nowMs = performance.now()
-      spawnSprout(sprouts, x, y, nowMs)
-      if (Math.random() < 0.5) spawnSprout(sprouts, x, y, nowMs)
-      if (!rafId) rafId = requestAnimationFrame(tick)
-    }
-
-    const sproutsEnabled = pointerFine && ctx !== null
-    if (sproutsEnabled) window.addEventListener('pointermove', handlePointerMove, { passive: true })
-
     return () => {
       window.removeEventListener('scroll', onScroll)
       resizeObserver.disconnect()
       ctaVisibilityObserver.disconnect()
       if (geometryWatchRafId) cancelAnimationFrame(geometryWatchRafId)
-      if (sproutsEnabled) window.removeEventListener('pointermove', handlePointerMove)
-      if (rafId) cancelAnimationFrame(rafId)
     }
-  }, [sectionRef, ctaRef, pointerFine])
+  }, [sectionRef, ctaRef])
 
   return (
-    <>
-      <svg ref={svgRef} className={styles.line} viewBox="0 0 1000 1400" aria-hidden="true">
-        <path
-          ref={pathRef}
-          pathLength={1}
-          d="M500,0 C500,110 660,150 690,300 C720,450 370,500 330,650 C290,800 710,830 670,980 C630,1130 330,1160 390,1290 C420,1355 470,1385 500,1400"
-        />
-      </svg>
-      {/* difference blend + white strokes, same adaptive trick as .line, so sprouts read dark over the paper and bright over the videos */}
-      {pointerFine && <canvas ref={canvasRef} className={styles.sprouts} aria-hidden="true" />}
-    </>
+    <svg ref={svgRef} className={styles.line} viewBox="0 0 1000 1400" aria-hidden="true">
+      <path
+        ref={pathRef}
+        pathLength={1}
+        d="M500,0 C500,110 660,150 690,300 C720,450 370,500 330,650 C290,800 710,830 670,980 C630,1130 330,1160 390,1290 C420,1355 470,1385 500,1400"
+      />
+    </svg>
   )
 }

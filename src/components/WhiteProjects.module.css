@@ -114,6 +114,30 @@
   object-fit: cover;
 }
 
+.paArtwork {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #216895;
+  pointer-events: none;
+}
+
+.paArtwork svg {
+  display: block;
+  width: clamp(220px, 38vw, 560px);
+  max-width: 90%;
+}
+
+.paArtwork [data-pa-draw] {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+
+.paArtwork [data-pa-olive] {
+  fill-opacity: 0;
+}
+
 .video {
   opacity: 0;
   transition: opacity 600ms ease;
@@ -357,6 +381,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .paArtwork [data-pa-draw] {
+    stroke-dashoffset: 0;
+  }
+
+  .paArtwork [data-pa-olive] {
+    fill-opacity: 0.85;
+  }
+
   .frost {
     display: none;
   }

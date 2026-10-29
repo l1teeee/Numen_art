@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
+import PaSprig from './PaSprig'
 import styles from './WhiteProjects.module.css'
 
 gsap.registerPlugin(useGSAP, ScrollTrigger)
@@ -11,6 +12,10 @@ type Project = {
   name: string
   url: string
   media: string
+  mobileMedia?: string
+  video?: string
+  mobileVideo?: string
+  artwork?: 'pa-sprig'
   ground: 'dark' | 'light'
 }
 
@@ -20,6 +25,7 @@ const PROJECTS: Project[] = [
     name: 'XIT',
     url: 'https://xit-nu.vercel.app/',
     media: 'project-xit',
+    video: 'project-xit',
     ground: 'dark',
   },
   {
@@ -27,6 +33,7 @@ const PROJECTS: Project[] = [
     name: 'Memoria',
     url: 'https://cosmos-carboncillo.vercel.app/',
     media: 'project-memoria',
+    video: 'project-memoria',
     ground: 'light',
   },
   {
@@ -34,6 +41,26 @@ const PROJECTS: Project[] = [
     name: 'LOYAL',
     url: 'https://loyal-omega-nine.vercel.app/',
     media: 'project-loyal',
+    video: 'project-loyal',
+    ground: 'dark',
+  },
+  {
+    index: '04',
+    name: 'pa',
+    url: 'https://suy-mauve.vercel.app/',
+    media: 'project-pa',
+    mobileMedia: 'project-pa-mobile',
+    artwork: 'pa-sprig',
+    ground: 'light',
+  },
+  {
+    index: '05',
+    name: 'Studio Viu',
+    url: 'https://viu-chi.vercel.app/',
+    media: 'project-viu',
+    mobileMedia: 'project-viu-mobile',
+    video: 'project-viu',
+    mobileVideo: 'project-viu-mobile',
     ground: 'dark',
   },
 ]
@@ -160,13 +187,27 @@ export default function WhiteProjects() {
           return panel.clientHeight / 2 - (firstCard.offsetTop + firstCard.offsetHeight / 2)
         }
 
+        const sprigNoise = frames[3].querySelector('[data-pa-boil-noise]')
+        const sprigBoil = sprigNoise ? gsap.timeline({ repeat: -1, paused: true }) : null
+        if (sprigBoil && sprigNoise) {
+          for (let seed = 1; seed <= 5; seed += 1) {
+            sprigBoil.set(sprigNoise, { attr: { seed } }, (seed - 1) * 0.14)
+          }
+          sprigBoil.set({}, {}, 0.7)
+        }
+
         let stageNearViewport = false
         // scrolltrigger can update during construction, before the timeline assignment completes
         let tl: gsap.core.Timeline | null = null
 
         // only the projects actually on screen decode their loops
-        function syncVideoPlayback() {
+        function syncActiveMedia() {
           const time = tl ? tl.time() : 0
+          const sprigVisible = time > transitionStart(3) && time < transitionStart(4) + WIPE_DURATION
+          if (sprigBoil) {
+            if (stageNearViewport && sprigVisible) sprigBoil.play()
+            else sprigBoil.pause()
+          }
           videoRefs.current.forEach((video, i) => {
             if (!video) return
             const afterPreviousTransitionStarts = i === 0 || time > transitionStart(i)
@@ -179,7 +220,7 @@ export default function WhiteProjects() {
         }
 
         tl = gsap.timeline({
-          onUpdate: syncVideoPlayback,
+          onUpdate: syncActiveMedia,
           scrollTrigger: {
             trigger: stage,
             start: 'top top',
@@ -246,13 +287,25 @@ export default function WhiteProjects() {
             .fromTo(incomingIndex, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.12 }, start + 0.19)
             .fromTo(incomingDetails, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.14 }, start + 0.25)
             .to(incomingZoom, { scale: 1.05, ease: 'none', duration: driftDuration }, end)
+
+          if (PROJECTS[projectIndex].artwork === 'pa-sprig') {
+            const sprigPaths = incomingFrame.querySelectorAll('[data-pa-draw]')
+            const olives = incomingFrame.querySelectorAll('[data-pa-olive]')
+            tl.fromTo(sprigPaths, { strokeDashoffset: 1 }, {
+              strokeDashoffset: 0,
+              duration: 0.24,
+              stagger: 0.012,
+              ease: 'power2.inOut',
+            }, start + 0.05)
+              .fromTo(olives, { fillOpacity: 0 }, { fillOpacity: 0.85, duration: 0.12 }, start + 0.3)
+          }
         }
 
         const idleObserver = new IntersectionObserver(
           (entries) => {
             for (const entry of entries) {
               stageNearViewport = entry.isIntersecting
-              syncVideoPlayback()
+              syncActiveMedia()
             }
           },
           { threshold: 0, rootMargin: '25% 0px' },
@@ -306,29 +359,43 @@ export default function WhiteProjects() {
                   zoomRefs.current[i] = node
                 }}
               >
-                <img
-                  className={styles.poster}
-                  src={`/media/${project.media}.jpg`}
-                  alt=""
-                  width={1280}
-                  height={800}
-                  loading="lazy"
-                  decoding="async"
-                />
-                {allowVideo && (
+                <picture>
+                  {project.mobileMedia && (
+                    <source media="(max-width: 810px)" srcSet={`/media/${project.mobileMedia}.jpg`} />
+                  )}
+                  <img
+                    className={styles.poster}
+                    src={`/media/${project.media}.jpg`}
+                    alt=""
+                    width={1280}
+                    height={800}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+                {project.artwork === 'pa-sprig' && (
+                  <div className={styles.paArtwork}>
+                    <PaSprig />
+                  </div>
+                )}
+                {allowVideo && project.video && (
                   <video
                     className={`${styles.video} ${liveVideos.has(i) ? styles.videoLive : ''}`}
                     ref={(node) => {
                       videoRefs.current[i] = node
                     }}
-                    src={`/media/${project.media}.mp4`}
                     muted
                     loop
                     playsInline
                     preload="none"
                     aria-hidden="true"
                     onPlaying={() => markLive(i)}
-                  />
+                  >
+                    {project.mobileVideo && (
+                      <source media="(max-width: 810px)" src={`/media/${project.mobileVideo}.mp4`} type="video/mp4" />
+                    )}
+                    <source src={`/media/${project.video}.mp4`} type="video/mp4" />
+                  </video>
                 )}
               </div>
               {i === 0 && <div className={styles.frost} ref={frostRef} aria-hidden="true" />}
@@ -363,7 +430,7 @@ export default function WhiteProjects() {
                       }}
                     >
                       {project.name.split('').map((char, charIndex) => (
-                        <span key={charIndex} className={styles.char}>{char}</span>
+                        <span key={charIndex} className={styles.char}>{char === ' ' ? '\u00a0' : char}</span>
                       ))}
                     </span>
                   </span>

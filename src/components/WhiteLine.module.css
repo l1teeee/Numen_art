@@ -38,17 +38,6 @@
   }
 }
 
-.sprouts {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  /* stays with .line above the practices stage so hover sprouts don't hide either */
-  z-index: 5;
-  mix-blend-mode: difference;
-}
-
 /* the heartbeat re-composites the whole stretched section against the videos every frame, too costly on
    touch and small screens - the difference blend stays so the line still reads over the white project card */
 @media (max-width: 810px), (pointer: coarse) {
@@ -66,10 +55,5 @@
   .line path {
     stroke-dasharray: none;
     stroke-dashoffset: 0;
-  }
-
-  /* sprouts are cursor-driven motion - no listener is attached under reduced motion, hide the empty canvas */
-  .sprouts {
-    display: none;
   }
 }

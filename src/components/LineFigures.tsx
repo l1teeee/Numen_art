@@ -140,105 +140,6 @@ function createTrailState(): TrailState | null {
   return { maskCanvas, maskCtx, highlightCanvas, highlightCtx, prevPointer: null, lastFrameMs: null, lastDotMs: -Infinity }
 }
 
-// hover sprouts: tiny random curved lines born wherever the cursor moves, that grow briefly
-// then slowly contract back into their birth point instead of vanishing abruptly. Spawned in
-// the pointermove handler (see handlePointerMove), drawn each frame in drawSprouts.
-type Sprout = { x: number; y: number; angle: number; len: number; ctrlOffset: number; bornMs: number; lifeMs: number }
-
-const SPROUT_SPAWN_DIST_PX = 14 // accumulated pointer distance before a sprout is born
-const SPROUT_SPAWN_BURST_DIST_PX = 40 // a single move past this distance births 2 sprouts instead of 1
-const SPROUT_MAX_ALIVE = 28
-const SPROUT_LEN_MIN_PX = 18, SPROUT_LEN_MAX_PX = 55
-const SPROUT_LIFE_MIN_MS = 900, SPROUT_LIFE_MAX_MS = 1800
-const SPROUT_CTRL_BOW_MIN = 0.2, SPROUT_CTRL_BOW_MAX = 0.5 // perpendicular bow, as a fraction of the sprout's own length
-const SPROUT_GROW_FRACTION = 0.18 // grows over the first 18% of life, then contracts over the rest
-const SPROUT_LINE_WIDTH = 1
-
-// proximity gate: sprouts only spawn when the pointer is on or near a drawn line, not
-// anywhere over the canvas - hit-tested with a fat stroke tolerance against the same
-// Path2D objects the last frame actually drew (see lastRenderedPaths/lastHeroTop below)
-const SPROUT_HIT_TEST_LINE_WIDTH = 44
-
-// client: sprouts belong to the travelling line (the descent), not the resting hero rings -
-// gate on the loops having fully opened into tails before a sprout can spawn at all
-const SPROUT_MIN_OPEN = 0.9
-
-function randomBetween(min: number, max: number): number {
-  return min + Math.random() * (max - min)
-}
-
-// totally random per sprout by design - no symmetry, so hovering never reads as a fixed pattern
-function spawnSprout(sprouts: Sprout[], x: number, y: number, bornMs: number) {
-  if (sprouts.length >= SPROUT_MAX_ALIVE) sprouts.shift() // drop the oldest
-  const len = randomBetween(SPROUT_LEN_MIN_PX, SPROUT_LEN_MAX_PX)
-  const bowSign = Math.random() < 0.5 ? -1 : 1
-  sprouts.push({
-    x,
-    y,
-    angle: Math.random() * TWO_PI,
-    len,
-    ctrlOffset: bowSign * randomBetween(SPROUT_CTRL_BOW_MIN, SPROUT_CTRL_BOW_MAX) * len,
-    bornMs,
-    lifeMs: randomBetween(SPROUT_LIFE_MIN_MS, SPROUT_LIFE_MAX_MS),
-  })
-}
-
-function easeOutQuad(x: number): number {
-  return 1 - (1 - x) * (1 - x)
-}
-
-function easeInOutQuad(x: number): number {
-  return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2
-}
-
-// grows 0 -> 1 over the first SPROUT_GROW_FRACTION of life, then contracts 1 -> 0 over the
-// rest - u is the fraction of the sprout's own curve currently drawn (see drawSprouts)
-function sproutProgress(age: number): number {
-  if (age < SPROUT_GROW_FRACTION) return easeOutQuad(age / SPROUT_GROW_FRACTION)
-  return 1 - easeInOutQuad((age - SPROUT_GROW_FRACTION) / (1 - SPROUT_GROW_FRACTION))
-}
-
-// draws only the leading [0, u] sub-curve of each sprout's quadratic (birth point -> control
-// -> tip), so the tip is what grows out and then retracts back into the birth point - the
-// stroke's shape never jumps, it just shortens. Mutates sprouts in place with a swap-remove.
-function drawSprouts(ctx: CanvasRenderingContext2D, sprouts: Sprout[]) {
-  const nowMs = performance.now()
-  ctx.lineCap = 'round'
-  let i = 0
-  while (i < sprouts.length) {
-    const sprout = sprouts[i]
-    const age = (nowMs - sprout.bornMs) / sprout.lifeMs
-    if (age >= 1) {
-      sprouts[i] = sprouts[sprouts.length - 1]
-      sprouts.pop()
-      continue
-    }
-    const u = sproutProgress(age)
-    i++
-    if (u <= 0.001) continue
-
-    const endX = sprout.x + Math.cos(sprout.angle) * sprout.len
-    const endY = sprout.y + Math.sin(sprout.angle) * sprout.len
-    const midX = (sprout.x + endX) / 2
-    const midY = (sprout.y + endY) / 2
-    const ctrlX = midX - Math.sin(sprout.angle) * sprout.ctrlOffset
-    const ctrlY = midY + Math.cos(sprout.angle) * sprout.ctrlOffset
-
-    const leadCtrlX = sprout.x + (ctrlX - sprout.x) * u
-    const leadCtrlY = sprout.y + (ctrlY - sprout.y) * u
-    const oneMinusU = 1 - u
-    const tipX = oneMinusU * oneMinusU * sprout.x + 2 * oneMinusU * u * ctrlX + u * u * endX
-    const tipY = oneMinusU * oneMinusU * sprout.y + 2 * oneMinusU * u * ctrlY + u * u * endY
-
-    ctx.lineWidth = SPROUT_LINE_WIDTH
-    ctx.strokeStyle = `rgba(255, 255, 255, ${0.75 * (1 - age * 0.6)})`
-    ctx.beginPath()
-    ctx.moveTo(sprout.x, sprout.y)
-    ctx.quadraticCurveTo(leadCtrlX, leadCtrlY, tipX, tipY)
-    ctx.stroke()
-  }
-}
-
 type RenderedPath = { path: Path2D; visibility: number }
 
 // as the tails converge, every centre loop except the innermost dissolves so the bundle
@@ -340,9 +241,6 @@ function drawFrame(
   extend: number,
   geometryCache: { current: CachedGeometry | null },
   pulse = 0,
-  sprouts: Sprout[] = [],
-  lastRenderedPaths: { current: RenderedPath[] },
-  lastHeroTop: { current: number },
 ) {
   ctx.clearRect(0, 0, width, height)
   if (width <= 0 || height <= 0) return
@@ -371,10 +269,6 @@ function drawFrame(
   const renderedPaths = renderFigure(ctx, geometry, opening, pulse, widthFactor)
   ctx.restore()
 
-  // only paths still meaningfully visible count as "on a line" for the hover-sprout gate
-  lastRenderedPaths.current = renderedPaths.filter((p) => p.visibility >= 0.05)
-  lastHeroTop.current = frame.heroTop
-
   if (trail) {
     updateTrailMask(trail, pointer, width, height)
     if (performance.now() - trail.lastDotMs <= TRAIL_IDLE_SKIP_MS) {
@@ -382,10 +276,6 @@ function drawFrame(
       ctx.drawImage(trail.highlightCanvas, 0, 0, width, height)
     }
   }
-
-  // raw viewport coordinates - no heroTop translate - so sprouts stay pinned where the
-  // cursor actually was on screen rather than scrolling with the hero figure
-  drawSprouts(ctx, sprouts)
 }
 
 export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => StoryFrame }) {
@@ -411,18 +301,6 @@ export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => St
     // The glow is autonomous motion and has no loop to fade it in that mode.
     const trail = pointerFine && !reduceMotion ? createTrailState() : null
     const geometryCache: { current: CachedGeometry | null } = { current: null }
-    // reused every frame (see drawSprouts' swap-remove) so spawning/animating sprouts never
-    // allocates per-sprout closures; only ever populated when trail exists (pointer fine, no
-    // reduced motion), same gate as the pointermove listener below
-    const sprouts: Sprout[] = []
-    let sproutSpawnAccumPx = 0
-    let lastSproutSpawnPoint: { x: number; y: number } | null = null
-    // latest drawn frame's paths/offset, read by the pointermove proximity gate - stays
-    // empty until the first drawFrame runs, so hovering before that spawns nothing
-    const lastRenderedPaths: { current: RenderedPath[] } = { current: [] }
-    const lastHeroTop: { current: number } = { current: 0 }
-    // frame.timeline.open from the last drawn frame - read by the sprout proximity gate
-    const lastOpen: { current: number } = { current: 0 }
 
     // what the last actually-drawn frame looked like, so an unchanged frozen frame with an
     // idle trail can be skipped instead of re-rendering identical pixels every tick. open and
@@ -504,11 +382,7 @@ export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => St
         displayedExtend,
         geometryCache,
         pulse,
-        sprouts,
-        lastRenderedPaths,
-        lastHeroTop,
       )
-      lastOpen.current = frame.timeline.open
     }
 
     function resize() {
@@ -538,39 +412,8 @@ export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => St
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(canvas)
 
-    // hit-tests the pointer against the last drawn frame's line paths with a fat tolerance -
-    // only called every >= SPROUT_SPAWN_DIST_PX of movement (see handlePointerMove), so this
-    // stays a handful of isPointInStroke calls per move and never runs per animation frame
-    function pointerIsOnLine(x: number, y: number): boolean {
-      // client: sprouts must not appear in the resting hero rings, only once the figure has
-      // opened into the travelling line - checked before the isPointInStroke test below
-      if (lastOpen.current < SPROUT_MIN_OPEN) return false
-      const paths = lastRenderedPaths.current
-      if (paths.length === 0) return false
-      ctx.save()
-      ctx.lineWidth = SPROUT_HIT_TEST_LINE_WIDTH
-      const hit = paths.some(({ path }) => ctx.isPointInStroke(path, x, y - lastHeroTop.current))
-      ctx.restore()
-      return hit
-    }
-
     function handlePointerMove(event: PointerEvent) {
-      const point = { x: event.clientX, y: event.clientY }
-      pointerState.current = point
-
-      if (lastSproutSpawnPoint) {
-        const moveDistPx = Math.hypot(point.x - lastSproutSpawnPoint.x, point.y - lastSproutSpawnPoint.y)
-        sproutSpawnAccumPx += moveDistPx
-        if (sproutSpawnAccumPx >= SPROUT_SPAWN_DIST_PX) {
-          if (pointerIsOnLine(point.x, point.y)) {
-            const nowMs = performance.now()
-            spawnSprout(sprouts, point.x, point.y, nowMs)
-            if (moveDistPx > SPROUT_SPAWN_BURST_DIST_PX) spawnSprout(sprouts, point.x, point.y, nowMs)
-          }
-          sproutSpawnAccumPx = 0
-        }
-      }
-      lastSproutSpawnPoint = point
+      pointerState.current = { x: event.clientX, y: event.clientY }
     }
 
     function handlePointerLeave() {
