@@ -63,6 +63,16 @@ const PROJECTS: Project[] = [
     mobileVideo: 'project-viu-mobile',
     ground: 'dark',
   },
+  {
+    index: '06',
+    name: 'nature',
+    url: 'https://nat-psi-ten.vercel.app/',
+    media: 'project-nature',
+    mobileMedia: 'project-nature-mobile',
+    video: 'project-nature',
+    mobileVideo: 'project-nature-mobile',
+    ground: 'light',
+  },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
