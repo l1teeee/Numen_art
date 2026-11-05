@@ -83,6 +83,16 @@ const PROJECTS: Project[] = [
     mobileVideo: 'project-brut-mobile',
     ground: 'dark',
   },
+  {
+    index: '08',
+    name: 'BRUK',
+    url: 'https://bruk-psi.vercel.app/',
+    media: 'project-bruk',
+    mobileMedia: 'project-bruk-mobile',
+    video: 'project-bruk',
+    mobileVideo: 'project-bruk-mobile',
+    ground: 'light',
+  },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
