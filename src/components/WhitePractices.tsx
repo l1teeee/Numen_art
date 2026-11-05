@@ -53,6 +53,19 @@ const KEN_BURNS_DURATIONS = [20, 24, 28]
 
 const TRANSITION_DURATION = 0.12
 
+// timeline seconds where Brand -> Motion and Motion -> Experience start
+const MOTION_SWAP_AT = 0.28
+const EXPERIENCE_SWAP_AT = 0.58
+// Experience rests as long as Brand does before the pin lets go; without it the pin released
+// the moment Experience landed and the page ran straight into Selected work
+const EXPERIENCE_HOLD = 0.28
+const TIMELINE_LENGTH = EXPERIENCE_SWAP_AT + TRANSITION_DURATION + EXPERIENCE_HOLD
+// percent of viewport scrolled per timeline second, the pace the two swaps were tuned at (400% for 0.70)
+const SCROLL_PER_SECOND = 4000 / 7
+// snap rests in the middle of the Motion and Experience holds
+const MOTION_REST = (MOTION_SWAP_AT + TRANSITION_DURATION + EXPERIENCE_SWAP_AT) / 2
+const EXPERIENCE_REST = EXPERIENCE_SWAP_AT + TRANSITION_DURATION + EXPERIENCE_HOLD / 2
+
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
 
 export default function WhitePractices() {
@@ -154,13 +167,13 @@ export default function WhitePractices() {
           scrollTrigger: {
             trigger: stage,
             start: 'top top',
-            end: '+=400%',
+            end: `+=${Math.round(SCROLL_PER_SECOND * TIMELINE_LENGTH)}%`,
             pin: true,
             anticipatePin: 1,
             scrub: 0.9,
             snap: isMobile
               ? undefined
-              : { snapTo: [0, 0.49, 1], directional: false, duration: { min: 0.2, max: 0.6 }, delay: 0.15, ease: 'power1.inOut' },
+              : { snapTo: 'labels', duration: { min: 0.2, max: 0.6 }, delay: 0.15, ease: 'power1.inOut' },
           },
         })
 
@@ -178,27 +191,35 @@ export default function WhitePractices() {
         idleObserver.observe(stage)
 
         // Brand -> Motion
-        tl.to(ghostRefs.current[0], { y: -80, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(titleRefs.current[0], { y: -60, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(descRefs.current[0], { opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(videoLayerRefs.current[0], { autoAlpha: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(linePathRef.current, { attr: { d: LINE_SHAPES[1] }, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(ghostRefs.current[1], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(titleRefs.current[1], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(descRefs.current[1], { opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(videoLayerRefs.current[1], { autoAlpha: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
-          .to(echoPathRef.current, { autoAlpha: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.28)
+        tl.to(ghostRefs.current[0], { y: -80, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(titleRefs.current[0], { y: -60, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(descRefs.current[0], { opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(videoLayerRefs.current[0], { autoAlpha: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(linePathRef.current, { attr: { d: LINE_SHAPES[1] }, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(ghostRefs.current[1], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(titleRefs.current[1], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(descRefs.current[1], { opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(videoLayerRefs.current[1], { autoAlpha: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
+          .to(echoPathRef.current, { autoAlpha: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, MOTION_SWAP_AT)
           // Motion -> Experience
-          .to(ghostRefs.current[1], { y: -80, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(titleRefs.current[1], { y: -60, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(descRefs.current[1], { opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(videoLayerRefs.current[1], { autoAlpha: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(echoPathRef.current, { autoAlpha: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(linePathRef.current, { attr: { d: LINE_SHAPES[2] }, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(ghostRefs.current[2], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(titleRefs.current[2], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(descRefs.current[2], { opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
-          .to(videoLayerRefs.current[2], { autoAlpha: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, 0.58)
+          .to(ghostRefs.current[1], { y: -80, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(titleRefs.current[1], { y: -60, opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(descRefs.current[1], { opacity: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(videoLayerRefs.current[1], { autoAlpha: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(echoPathRef.current, { autoAlpha: 0, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(linePathRef.current, { attr: { d: LINE_SHAPES[2] }, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(ghostRefs.current[2], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(titleRefs.current[2], { y: 0, opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(descRefs.current[2], { opacity: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+          .to(videoLayerRefs.current[2], { autoAlpha: 1, ease: 'power2.inOut', duration: TRANSITION_DURATION }, EXPERIENCE_SWAP_AT)
+
+        // keeps the pin, and the timeline, running through Experience's hold
+        tl.to({}, { duration: TIMELINE_LENGTH }, 0)
+        // 'release' sits at the end so a stop near the exit snaps out of the pin, not back into it
+        tl.addLabel('brand', 0)
+          .addLabel('motion', MOTION_REST)
+          .addLabel('experience', EXPERIENCE_REST)
+          .addLabel('release', TIMELINE_LENGTH)
 
         return () => idleObserver.disconnect()
       })
