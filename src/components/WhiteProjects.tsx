@@ -178,6 +178,10 @@ export default function WhiteProjects() {
         const wipeTo = `inset(0% 0% 0% 0% round ${cardRadius}px ${cardRadius}px 0px 0px)`
         const groundFrom = `inset(100% 0% 0% 0% round ${cardRadius * 2}px ${cardRadius * 2}px 0px 0px)`
         const groundTo = 'inset(0% 0% 0% 0% round 0px 0px 0px 0px)'
+        // phones stack the name and visit button under the card, so a ground sheet wiping up through
+        // that band read as a blank block at the bottom of every change; there the ground fades instead
+        const groundHidden = isMobile ? { clipPath: groundTo, autoAlpha: 0 } : { clipPath: groundFrom }
+        const groundShown = isMobile ? { clipPath: groundTo, autoAlpha: 1 } : { clipPath: groundTo }
         const frames = getRequiredRefs(frameRefs.current, PROJECTS.length)
         const zooms = getRequiredRefs(zoomRefs.current, PROJECTS.length)
         const grounds = getRequiredRefs(groundRefs.current, PROJECTS.length - 1)
@@ -296,7 +300,7 @@ export default function WhiteProjects() {
 
           tl.to(outgoingChars, { yPercent: -110, ease: 'power2.in', duration: 0.1, stagger: 0.01 }, start)
             .to(outgoingInfo, { autoAlpha: 0, y: -24, ease: 'power2.in', duration: 0.17 }, start)
-            .fromTo(incomingGround, { clipPath: groundFrom }, { clipPath: groundTo, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
+            .fromTo(incomingGround, groundHidden, { ...groundShown, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
             .fromTo(incomingFrame, { clipPath: wipeFrom }, { clipPath: wipeTo, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
             .fromTo(incomingZoom, { scale: 1.15, yPercent: 8 }, { scale: 1, yPercent: 0, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
             .to(outgoingZoom, { scale: 1.1, yPercent: -6, ease: 'power2.inOut', duration: WIPE_DURATION }, start)
@@ -317,6 +321,9 @@ export default function WhiteProjects() {
             .fromTo(incomingIndex, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.12 }, start + 0.19)
             .fromTo(incomingDetails, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.14 }, start + 0.25)
             .to(incomingZoom, { scale: 1.05, ease: 'none', duration: driftDuration }, end)
+
+          // fully covered by now; hidden so it cannot peek out around the next pull-back
+          tl.set(outgoingFrame, { autoAlpha: 0 }, end)
 
           if (PROJECTS[projectIndex].artwork === 'pa-sprig') {
             const sprigPaths = incomingFrame.querySelectorAll('[data-pa-draw]')
