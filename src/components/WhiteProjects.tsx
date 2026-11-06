@@ -101,6 +101,16 @@ const PROJECTS: Project[] = [
     mobileMedia: 'project-still-mobile',
     ground: 'dark',
   },
+  {
+    index: '10',
+    name: 'mimo',
+    url: 'https://mimo-topaz.vercel.app/',
+    media: 'project-mimo',
+    mobileMedia: 'project-mimo-mobile',
+    video: 'project-mimo',
+    mobileVideo: 'project-mimo-mobile',
+    ground: 'light',
+  },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
