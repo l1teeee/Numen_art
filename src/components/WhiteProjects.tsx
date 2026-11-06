@@ -124,6 +124,28 @@ const PROJECTS: Project[] = [
     groundColor: '#2d2d2d',
     ink: 'white',
   },
+  {
+    index: '11',
+    name: 'CRETE',
+    url: 'https://crete-two.vercel.app/',
+    media: 'project-crete',
+    mobileMedia: 'project-crete-mobile',
+    video: 'project-crete',
+    mobileVideo: 'project-crete-mobile',
+    groundColor: '#c4573f',
+    ink: 'black',
+  },
+  {
+    index: '12',
+    name: 'look',
+    url: 'https://look-liart-one.vercel.app/',
+    media: 'project-look',
+    mobileMedia: 'project-look-mobile',
+    video: 'project-look',
+    mobileVideo: 'project-look-mobile',
+    groundColor: '#bea37f',
+    ink: 'black',
+  },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
