@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
@@ -16,7 +16,10 @@ type Project = {
   video?: string
   mobileVideo?: string
   artwork?: 'pa-sprig'
-  ground: 'dark' | 'light'
+  // sampled from the project's own loop, so each section takes the color of its video
+  groundColor: string
+  // whichever of black or white contrasts more with groundColor, so the name stays legible
+  ink: 'black' | 'white'
 }
 
 const PROJECTS: Project[] = [
@@ -26,7 +29,8 @@ const PROJECTS: Project[] = [
     url: 'https://xit-nu.vercel.app/',
     media: 'project-xit',
     video: 'project-xit',
-    ground: 'dark',
+    groundColor: '#dadada',
+    ink: 'black',
   },
   {
     index: '02',
@@ -34,7 +38,8 @@ const PROJECTS: Project[] = [
     url: 'https://cosmos-carboncillo.vercel.app/',
     media: 'project-memoria',
     video: 'project-memoria',
-    ground: 'light',
+    groundColor: '#a7a299',
+    ink: 'black',
   },
   {
     index: '03',
@@ -42,7 +47,8 @@ const PROJECTS: Project[] = [
     url: 'https://loyal-omega-nine.vercel.app/',
     media: 'project-loyal',
     video: 'project-loyal',
-    ground: 'dark',
+    groundColor: '#4c5f62',
+    ink: 'white',
   },
   {
     index: '04',
@@ -51,7 +57,8 @@ const PROJECTS: Project[] = [
     media: 'project-pa',
     mobileMedia: 'project-pa-mobile',
     artwork: 'pa-sprig',
-    ground: 'light',
+    groundColor: '#c8c0b6',
+    ink: 'black',
   },
   {
     index: '05',
@@ -61,7 +68,8 @@ const PROJECTS: Project[] = [
     mobileMedia: 'project-viu-mobile',
     video: 'project-viu',
     mobileVideo: 'project-viu-mobile',
-    ground: 'dark',
+    groundColor: '#bb635c',
+    ink: 'black',
   },
   {
     index: '06',
@@ -71,7 +79,8 @@ const PROJECTS: Project[] = [
     mobileMedia: 'project-nature-mobile',
     video: 'project-nature',
     mobileVideo: 'project-nature-mobile',
-    ground: 'light',
+    groundColor: '#585e50',
+    ink: 'white',
   },
   {
     index: '07',
@@ -81,7 +90,8 @@ const PROJECTS: Project[] = [
     mobileMedia: 'project-brut-mobile',
     video: 'project-brut',
     mobileVideo: 'project-brut-mobile',
-    ground: 'dark',
+    groundColor: '#ac8db7',
+    ink: 'black',
   },
   {
     index: '08',
@@ -91,7 +101,8 @@ const PROJECTS: Project[] = [
     mobileMedia: 'project-bruk-mobile',
     video: 'project-bruk',
     mobileVideo: 'project-bruk-mobile',
-    ground: 'light',
+    groundColor: '#818181',
+    ink: 'black',
   },
   {
     index: '09',
@@ -99,7 +110,8 @@ const PROJECTS: Project[] = [
     url: 'https://nav-umber-beta.vercel.app/',
     media: 'project-still',
     mobileMedia: 'project-still-mobile',
-    ground: 'dark',
+    groundColor: '#172530',
+    ink: 'white',
   },
   {
     index: '10',
@@ -109,7 +121,8 @@ const PROJECTS: Project[] = [
     mobileMedia: 'project-mimo-mobile',
     video: 'project-mimo',
     mobileVideo: 'project-mimo-mobile',
-    ground: 'light',
+    groundColor: '#2d2d2d',
+    ink: 'white',
   },
 ]
 
@@ -130,6 +143,13 @@ function getRequiredRefs<T>(refs: Array<T | null>, count: number) {
   const required = Array.from({ length: count }, (_, index) => refs[index])
   if (!required.every((ref): ref is T => ref !== null && ref !== undefined)) return null
   return required
+}
+
+type GroundColorStyle = CSSProperties & { '--ground-color': string }
+
+// the panel carries the same variable as its ground layer so the stacked reduced-motion layout can paint it
+function groundColorStyle(groundColor: string): GroundColorStyle {
+  return { '--ground-color': groundColor }
 }
 
 export default function WhiteProjects() {
@@ -202,7 +222,7 @@ export default function WhiteProjects() {
         const groundShown = isMobile ? { clipPath: groundTo, autoAlpha: 1 } : { clipPath: groundTo }
         const frames = getRequiredRefs(frameRefs.current, PROJECTS.length)
         const zooms = getRequiredRefs(zoomRefs.current, PROJECTS.length)
-        const grounds = getRequiredRefs(groundRefs.current, PROJECTS.length - 1)
+        const grounds = getRequiredRefs(groundRefs.current, PROJECTS.length)
         const shades = getRequiredRefs(shadeRefs.current, PROJECTS.length - 1)
         const infos = getRequiredRefs(infoRefs.current, PROJECTS.length)
         const names = getRequiredRefs(nameRefs.current, PROJECTS.length)
@@ -220,6 +240,7 @@ export default function WhiteProjects() {
 
         const firstCard = frames[0]
         const firstZoom = zooms[0]
+        const firstGround = grounds[0]
         const firstName = names[0]
         const firstIndex = indexes[0]
         const firstDetails = details[0]
@@ -286,6 +307,7 @@ export default function WhiteProjects() {
 
         tl.to({}, { duration: TIMELINE_LENGTH }, 0)
         tl.fromTo(firstCard, { clipPath: windowFrom, y: () => cardCenterShift() }, { clipPath: windowTo, y: 0, ease: 'power2.inOut', duration: 0.3 }, 0)
+          .fromTo(firstGround, groundHidden, { ...groundShown, ease: 'power2.inOut', duration: 0.3 }, 0)
           .fromTo(firstZoom, { scale: 1.3 }, { scale: 1, ease: 'power2.out', duration: 0.3 }, 0)
           .fromTo(frost, { '--frost-blur': isMobile ? '10px' : '18px', autoAlpha: 1 }, { '--frost-blur': '0px', autoAlpha: 0, ease: 'power2.inOut', duration: 0.26 }, 0)
           .fromTo(firstChars, { yPercent: 110 }, { yPercent: 0, ease: 'power3.out', duration: 0.12, stagger: 0.015 }, 0.16)
@@ -306,8 +328,7 @@ export default function WhiteProjects() {
           const incomingFrame = frames[projectIndex]
           const outgoingZoom = zooms[outgoingIndex]
           const incomingZoom = zooms[projectIndex]
-          // ground layers start at project 1, so the incoming project's layer sits one slot lower
-          const incomingGround = grounds[projectIndex - 1]
+          const incomingGround = grounds[projectIndex]
           const outgoingShade = shades[outgoingIndex]
           const outgoingInfo = infos[outgoingIndex]
           const incomingInfo = infos[projectIndex]
@@ -389,10 +410,11 @@ export default function WhiteProjects() {
       </header>
 
       <div className={styles.stage} ref={stageRef}>
-        {PROJECTS.slice(1).map((project, i) => (
+        {PROJECTS.map((project, i) => (
           <div
             key={project.index}
-            className={`${styles.ground} ${project.ground === 'light' ? styles.groundLight : styles.groundDark}`}
+            className={styles.ground}
+            style={groundColorStyle(project.groundColor)}
             ref={(node) => {
               groundRefs.current[i] = node
             }}
@@ -402,7 +424,8 @@ export default function WhiteProjects() {
         {PROJECTS.map((project, i) => (
           <article
             key={project.index}
-            className={`${styles.panel} ${project.ground === 'light' ? styles.panelOnLight : ''}`}
+            className={`${styles.panel} ${project.ink === 'black' ? styles.panelInkBlack : ''}`}
+            style={groundColorStyle(project.groundColor)}
             aria-labelledby={`project-${project.index}`}
           >
             <div

@@ -66,14 +66,7 @@
   inset: 0;
   clip-path: inset(100% 0% 0% 0% round 32px 32px 0px 0px);
   pointer-events: none;
-}
-
-.groundLight {
-  background: #fff;
-}
-
-.groundDark {
-  background: #000;
+  background: var(--ground-color);
 }
 
 .panel {
@@ -200,20 +193,16 @@
   color: #fff;
 }
 
-.panelOnLight .info {
+.panelInkBlack .info {
   color: #000;
 }
 
-.panelOnLight .index {
-  color: rgba(0, 0, 0, 0.5);
-}
-
-.panelOnLight .visit {
+.panelInkBlack .visit {
   background: #000;
   color: #fff;
 }
 
-.panelOnLight .visitArrow path {
+.panelInkBlack .visitArrow path {
   stroke: #fff;
 }
 
@@ -227,7 +216,6 @@
   margin-bottom: 14px;
   font-size: 13px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.55);
   font-variant-numeric: tabular-nums;
 }
 
@@ -403,24 +391,13 @@
     position: relative;
     inset: auto;
     height: auto;
-    padding: 0 clamp(12px, 2vw, 28px);
-    margin-bottom: 64px;
+    padding: 64px clamp(12px, 2vw, 28px);
     pointer-events: auto;
+    background: var(--ground-color);
   }
 
   .ground {
     display: none;
-  }
-
-  .panelOnLight {
-    margin-bottom: 0;
-    padding-top: 64px;
-    padding-bottom: 64px;
-    background: #fff;
-  }
-
-  .panelOnLight + .panel:not(.panelOnLight) {
-    padding-top: 64px;
   }
 
   .frame {
@@ -452,17 +429,7 @@
 
 @media (prefers-reduced-motion: reduce) and (max-width: 810px) {
   .panel {
-    padding: 0 12px;
-    margin-bottom: 48px;
-  }
-
-  .panelOnLight {
-    padding-top: 48px;
-    padding-bottom: 48px;
-  }
-
-  .panelOnLight + .panel:not(.panelOnLight) {
-    padding-top: 48px;
+    padding: 48px 12px;
   }
 
   .frame {
