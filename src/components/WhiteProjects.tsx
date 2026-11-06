@@ -93,6 +93,14 @@ const PROJECTS: Project[] = [
     mobileVideo: 'project-bruk-mobile',
     ground: 'light',
   },
+  {
+    index: '09',
+    name: 'Still',
+    url: 'https://nav-umber-beta.vercel.app/',
+    media: 'project-still',
+    mobileMedia: 'project-still-mobile',
+    ground: 'dark',
+  },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
