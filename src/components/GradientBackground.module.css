@@ -27,6 +27,11 @@
   }
 }
 
+/* ScrollStory flags the hero while it is off screen */
+:global([data-offscreen]) .glow {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .glow {
     animation: none;

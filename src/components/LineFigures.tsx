@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import type { RefObject } from 'react'
 import { MOBILE_BREAKPOINT_PX, traceFigure, TWO_PI } from '../figure/figureGeometry'
 import type { FigureGeometry } from '../figure/figureGeometry'
 import { addOpenedLoop, addSmoothLoop, MAX_GAP_HALF_ANGLE } from '../figure/figurePaths'
@@ -278,12 +279,21 @@ function drawFrame(
   }
 }
 
-export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => StoryFrame }) {
+type LineFiguresProps = {
+  getStoryFrame: () => StoryFrame
+  heroRef: RefObject<HTMLElement | null>
+  descentRef: RefObject<HTMLDivElement | null>
+}
+
+export default function LineFigures({ getStoryFrame, heroRef, descentRef }: LineFiguresProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
     const attachedCanvas = canvasRef.current
     if (!attachedCanvas) return
+    const hero = heroRef.current
+    const descent = descentRef.current
+    if (!hero || !descent) return
     const canvas: HTMLCanvasElement = attachedCanvas
     const drawingContext = canvas.getContext('2d')
     if (!drawingContext) return
@@ -442,6 +452,7 @@ export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => St
     }
 
     let animationFrameId = 0
+    let regionObserver: IntersectionObserver | null = null
     if (!reduceMotion) {
       let lastFrameMs = performance.now()
       const tick = (now: number) => {
@@ -455,12 +466,41 @@ export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => St
         renderCurrentFrame(frame, pulse)
         animationFrameId = requestAnimationFrame(tick)
       }
-      animationFrameId = requestAnimationFrame(tick)
+
+      const startLoop = () => {
+        if (animationFrameId) return
+        lastFrameMs = performance.now()
+        animationFrameId = requestAnimationFrame(tick)
+      }
+
+      // one last frame on the way out hides the canvas, since the white section now covers the viewport top
+      const stopLoop = () => {
+        if (!animationFrameId) return
+        cancelAnimationFrame(animationFrameId)
+        animationFrameId = 0
+        renderCurrentFrame(getStoryFrame())
+      }
+
+      // the lines end where the white section starts, so they can only show while the hero or the
+      // descent is on screen; past them the loop's two layout reads per frame forced style recalcs
+      // on every frame of the pinned sections
+      const regionsOnScreen = new Set<Element>()
+      regionObserver = new IntersectionObserver((entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) regionsOnScreen.add(entry.target)
+          else regionsOnScreen.delete(entry.target)
+        }
+        if (regionsOnScreen.size > 0) startLoop()
+        else stopLoop()
+      })
+      regionObserver.observe(hero)
+      regionObserver.observe(descent)
     }
 
     return () => {
       resizeObserver.disconnect()
       if (animationFrameId) cancelAnimationFrame(animationFrameId)
+      regionObserver?.disconnect()
       if (trail) {
         window.removeEventListener('pointermove', handlePointerMove)
         document.documentElement.removeEventListener('pointerleave', handlePointerLeave)
@@ -471,7 +511,7 @@ export default function LineFigures({ getStoryFrame }: { getStoryFrame: () => St
       }
       canvas.style.visibility = ''
     }
-  }, [getStoryFrame])
+  }, [getStoryFrame, heroRef, descentRef])
 
   return <canvas ref={canvasRef} className={styles.canvas} aria-hidden="true" />
 }

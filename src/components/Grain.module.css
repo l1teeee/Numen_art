@@ -24,6 +24,11 @@
   }
 }
 
+/* ScrollStory flags the hero while it is off screen */
+:global([data-offscreen]) .grain {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .grain {
     animation: none;

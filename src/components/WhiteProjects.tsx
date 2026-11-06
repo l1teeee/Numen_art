@@ -295,6 +295,9 @@ export default function WhiteProjects() {
           .fromTo(firstDetails, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, ease: 'power3.out', duration: 0.14 }, 0.22)
           .to(firstZoom, { scale: 1.04, ease: 'none', duration: WIPE_START - 0.3 }, 0.3)
 
+        // hidden alone, the frost's infinite grain animation kept ticking; it leaves the render tree once faded
+        tl.set(frost, { display: 'none' }, 0.26)
+
         for (let projectIndex = 1; projectIndex < PROJECTS.length; projectIndex += 1) {
           const start = transitionStart(projectIndex)
           const end = start + WIPE_DURATION

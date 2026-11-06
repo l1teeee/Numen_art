@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef } from 'react'
 import { storyTimelineAt } from '../scroll/storyTimeline'
 import type { StoryFrame, StoryMeasure } from '../scroll/storyTimeline'
 import Descent from './Descent'
@@ -11,6 +11,7 @@ export default function ScrollStory() {
   const storyRef = useRef<HTMLElement>(null)
   const heroRef = useRef<HTMLElement>(null)
   const whiteRef = useRef<HTMLElement>(null)
+  const descentRef = useRef<HTMLDivElement>(null)
 
   const getStoryFrame = useCallback((): StoryFrame => {
     const viewportHeight = window.innerHeight
@@ -55,11 +56,28 @@ export default function ScrollStory() {
     }
   }, [getStoryFrame])
 
+  // the hero and descent decorations loop forever; off screen they only add a style recalc to every
+  // frame of the sections below, so their stylesheets pause them while this flag is set
+  useEffect(() => {
+    const hero = heroRef.current
+    const descent = descentRef.current
+    if (!hero || !descent) return
+
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        entry.target.toggleAttribute('data-offscreen', !entry.isIntersecting)
+      }
+    })
+    observer.observe(hero)
+    observer.observe(descent)
+    return () => observer.disconnect()
+  }, [])
+
   return (
     <main className={styles.story} ref={storyRef}>
-      <LineFigures getStoryFrame={getStoryFrame} />
+      <LineFigures getStoryFrame={getStoryFrame} heroRef={heroRef} descentRef={descentRef} />
       <Hero ref={heroRef} />
-      <Descent />
+      <Descent ref={descentRef} />
       <WhiteSection ref={whiteRef} />
     </main>
   )

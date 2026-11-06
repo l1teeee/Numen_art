@@ -150,6 +150,11 @@
   to { stroke-dashoffset: 26; }
 }
 
+/* ScrollStory flags the hero while it is off screen */
+.hero[data-offscreen] .scrollCueTravel {
+  animation-play-state: paused;
+}
+
 .fadeUp {
   opacity: 0;
   transform: translateY(16px);

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, Ref } from 'react'
 import styles from './Descent.module.css'
 
 // curated starfield positions across the outer thirds and safe corners - never the
@@ -71,9 +71,9 @@ const FIREFLIES = [
   { top: 27.8, left: 89.7, size: 3.1, floatDur: 10.9, floatDelay: -12.3, twinkleDur: 3.2, twinkleDelay: -1.4, twinkleMin: 0.29, twinkleMax: 0.48, driftX: 6.4 },
 ] as const
 
-export default function Descent() {
+export default function Descent({ ref }: { ref: Ref<HTMLDivElement> }) {
   return (
-    <div className={styles.descent} aria-hidden="true">
+    <div className={styles.descent} ref={ref} aria-hidden="true">
       {FIREFLIES.map((fly, i) => (
         <span
           key={i}

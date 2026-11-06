@@ -36,6 +36,11 @@
   }
 }
 
+/* ScrollStory flags the descent while it is off screen */
+.descent[data-offscreen] .firefly {
+  animation-play-state: paused;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .firefly {
     animation: none;
