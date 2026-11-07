@@ -1,0 +1,13 @@
+{
+  "name": "Numen Art",
+  "short_name": "Numen Art",
+  "description": "Numen Art is the creative division of Delta Numen. We take an idea, give it an identity and a direction, and build the web experience it was meant to become.",
+  "start_url": "/",
+  "display": "browser",
+  "theme_color": "#000000",
+  "background_color": "#000000",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/logo.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
