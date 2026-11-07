@@ -51,10 +51,12 @@
 .titleMask {
   display: block;
   overflow: hidden;
+  margin-bottom: -0.16em;
 }
 
 .titleLine {
   display: inline-block;
+  padding-bottom: 0.16em;
   transform: translateY(110%);
   transition: transform 850ms cubic-bezier(0.22, 1, 0.36, 1);
 }
