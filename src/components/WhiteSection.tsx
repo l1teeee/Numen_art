@@ -165,7 +165,7 @@ export default function WhiteSection({ ref }: { ref?: Ref<HTMLElement> }) {
               </span>
             </h2>
             <p className={styles.description} style={{ transitionDelay: '360ms' }}>
-              We follow it until it becomes a brand, a motion, an experience.
+              We follow it until it has an identity, a direction and a home on the web.
             </p>
           </div>
         </div>

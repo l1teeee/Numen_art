@@ -72,8 +72,8 @@ export default function Hero({ ref }: { ref: Ref<HTMLElement> }) {
         </h1>
 
         <p className={`${styles.description} ${styles.fadeUp}`} style={{ animationDelay: '600ms' }}>
-          Numen Art is the creative division of Delta Numen. Brand, motion and experiences shaped
-          from a first sketch to the real world.
+          Numen Art is the creative division of Delta Numen. We take an idea, give it an identity
+          and a direction, and build the web experience it was meant to become.
         </p>
 
         <span className={`${styles.buttonEntrance} ${styles.fadeUp}`} style={{ animationDelay: '750ms' }}>

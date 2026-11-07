@@ -12,7 +12,7 @@ ScrollTrigger.config({ ignoreMobileResize: true })
 const PRACTICES = [
   { index: '01', title: 'Brand', description: 'Identities with a pulse - naming, systems and art direction.' },
   { index: '02', title: 'Motion', description: 'Design that moves - film, product motion, title sequences.' },
-  { index: '03', title: 'Experience', description: 'Spaces and screens people step into - web, installations, live.' },
+  { index: '03', title: 'Experience', description: 'Websites people step into - interactive worlds built around the idea.' },
 ]
 
 // three gestures the protagonist line morphs between as the practices swap - each string is
