@@ -168,6 +168,28 @@ const PROJECTS: Project[] = [
     groundColor: '#093ea4',
     ink: 'white',
   },
+  {
+    index: '15',
+    name: 'Solar',
+    url: 'https://solar-three-phi.vercel.app/',
+    media: 'project-solar',
+    mobileMedia: 'project-solar-mobile',
+    video: 'project-solar',
+    mobileVideo: 'project-solar-mobile',
+    groundColor: '#327599',
+    ink: 'white',
+  },
+  {
+    index: '16',
+    name: 'simple',
+    url: 'https://simple-umber-delta.vercel.app/',
+    media: 'project-simple',
+    mobileMedia: 'project-simple-mobile',
+    video: 'project-simple',
+    mobileVideo: 'project-simple-mobile',
+    groundColor: '#25211c',
+    ink: 'white',
+  },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
