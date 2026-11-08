@@ -146,6 +146,28 @@ const PROJECTS: Project[] = [
     groundColor: '#bea37f',
     ink: 'black',
   },
+  {
+    index: '13',
+    name: 'brian',
+    url: 'https://brian-eta.vercel.app/',
+    media: 'project-brian',
+    mobileMedia: 'project-brian-mobile',
+    video: 'project-brian',
+    mobileVideo: 'project-brian-mobile',
+    groundColor: '#050505',
+    ink: 'white',
+  },
+  {
+    index: '14',
+    name: 'turnsa',
+    url: 'https://turnsa.vercel.app/',
+    media: 'project-turnsa',
+    mobileMedia: 'project-turnsa-mobile',
+    video: 'project-turnsa',
+    mobileVideo: 'project-turnsa-mobile',
+    groundColor: '#093ea4',
+    ink: 'white',
+  },
 ]
 
 const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
