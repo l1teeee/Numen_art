@@ -1,195 +1,283 @@
 .hero {
+  --gutter: clamp(16px, 2vw, 32px);
+  --small-text: clamp(11px, 0.82vw, 13px);
+  --panel-radius: 32px;
   position: relative;
   width: 100%;
   height: 100vh;
   height: 100svh;
   min-height: 560px;
   overflow: hidden;
-  background: #000;
-  /* No z-index: the fixed canvas sits above the background layers and below the hero content. */
+  background: #fff;
+  color: #000;
 }
 
-.center {
+.frame {
   position: relative;
   z-index: 3;
   height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  color: #fff;
-  padding: 0 24px;
-  padding-bottom: env(safe-area-inset-bottom);
+  display: grid;
+  grid-template-columns: minmax(0, 1.16fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'title masthead'
+    'intro panel';
+  column-gap: clamp(24px, 3vw, 48px);
+  row-gap: clamp(20px, 3.4vh, 40px);
+  padding: var(--gutter);
+  padding-bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
 }
 
 .title {
-  margin: 0;
+  grid-area: title;
+  /* The negative margin lines the N's stem up with the paragraph below it. */
+  margin: 0 0 0 -0.05em;
+  font-size: clamp(60px, 8.2vw, 172px);
   font-weight: 600;
-  font-size: clamp(34px, 5.2vw, 76px);
-  line-height: 1.02;
-  letter-spacing: -0.055em;
-  color: #fff;
-  text-wrap: balance;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+  text-transform: uppercase;
+  white-space: nowrap;
 }
 
-.titleLine2 {
-  color: rgba(255, 255, 255, 0.55);
+.masthead {
+  grid-area: masthead;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 1vw, 16px);
+  /* Drops the block to the top of the title's capitals. */
+  padding-top: clamp(8px, 1.13vw, 24px);
 }
 
-.wordMask {
+.word {
   display: inline-block;
-  overflow: hidden;
-  vertical-align: bottom;
-  /* Bottom padding + matching negative margin give descenders room inside
-     the overflow-hidden box without shifting surrounding line layout. */
-  padding-bottom: 0.2em;
-  margin-bottom: -0.2em;
 }
 
-.wordInner {
+.letter {
   display: inline-block;
-  transform: translateY(115%);
-  animation: word-reveal 850ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  animation: letter-settle 1100ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
 }
 
-@keyframes word-reveal {
+/* Quiet by design: letters only close their spacing and come into focus. */
+@keyframes letter-settle {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: translateX(calc(var(--spread) * 0.07em));
+  }
   to {
-    transform: translateY(0);
+    opacity: 1;
+    filter: blur(0);
+    transform: translateX(0);
   }
 }
 
-.description {
-  margin: 20px auto 0;
-  max-width: 460px;
-  font-size: 16px;
+.quietIn {
+  animation: quiet-in 900ms ease backwards;
+}
+
+@keyframes quiet-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes panel-focus {
+  from {
+    opacity: 0;
+    filter: blur(24px);
+    transform: scale(1.025);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1);
+  }
+}
+
+@keyframes panel-focus-light {
+  from {
+    opacity: 0;
+    transform: scale(1.025);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 16px;
+  font-size: var(--small-text);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.metaColumn {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.intro {
+  grid-area: intro;
+  align-self: start;
+  margin: 0;
+  max-width: 34em;
+  font-size: clamp(14px, 1.05vw, 17px);
   font-weight: 400;
-  line-height: 1.5;
-  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.45;
+  color: rgba(0, 0, 0, 0.62);
 }
 
-.buttonEntrance {
-  display: inline-block;
-  margin-top: 32px;
+.intro strong {
+  font-weight: 600;
+  color: #000;
 }
 
-.button {
-  --mx: 0px;
-  --my: 0px;
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px clamp(20px, 3vw, 44px);
+  font-size: var(--small-text);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.link {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  background: #fff;
-  border-radius: 40px;
-  padding: 14px 22px;
-  font-size: 15px;
-  font-weight: 500;
+  gap: 6px;
+  /* Tall hit area without changing the row height. */
+  padding-block: 12px;
+  margin-block: -12px;
   color: #000;
-  text-decoration: none;
-  transform: translate(var(--mx), var(--my));
-  transition: transform 250ms ease, box-shadow 200ms ease;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 200ms ease;
 }
 
-.button:hover {
-  transform: translate(var(--mx), var(--my)) scale(1.03);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+.link:hover {
+  text-decoration-color: currentColor;
 }
 
-.buttonArrow {
-  width: 12px;
-  height: 12px;
+.link:focus-visible {
+  border-radius: 2px;
+  outline: 2px solid #000;
+  outline-offset: 3px;
+  text-decoration-color: currentColor;
+}
+
+.linkArrow {
+  width: 10px;
+  height: 10px;
   transition: transform 200ms ease;
 }
 
-.buttonArrow path {
+.linkArrow path {
   fill: none;
-  stroke: #000;
+  stroke: currentColor;
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
 
-.button:hover .buttonArrow {
+.link:hover .linkArrow {
   transform: translate(2px, -2px);
 }
 
-.scrollCue {
+.panel {
+  grid-area: panel;
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--panel-radius);
+  background: #dcdcdc;
+  animation: panel-focus 1700ms cubic-bezier(0.16, 1, 0.3, 1) 250ms backwards;
+}
+
+/* Out of flow so the video's intrinsic size can never stretch the grid rows. */
+.panelVideo {
   position: absolute;
-  bottom: calc(28px + env(safe-area-inset-bottom));
-  left: 50%;
-  z-index: 3;
-  width: 12px;
-  height: 48px;
-  transform: translateX(-50%);
-  opacity: calc(0.6 * (1 - var(--scrolled, 0)));
-  transition: opacity 250ms ease;
-}
-
-.scrollCueSvg {
+  inset: 0;
   display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.scrollCueBase {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.25);
-  stroke-width: 1.5;
-  stroke-linecap: round;
+@media (max-width: 810px) {
+  .hero {
+    --panel-radius: 24px;
+    height: auto;
+    min-height: 100vh;
+    min-height: max(560px, 100svh);
+  }
+
+  .frame {
+    height: auto;
+    min-height: inherit;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(220px, 1fr);
+    grid-template-areas:
+      'title'
+      'masthead'
+      'intro'
+      'panel';
+    row-gap: 14px;
+  }
+
+  .title {
+    font-size: 15vw;
+  }
+
+  .masthead {
+    padding-top: 0;
+  }
+
+  .meta {
+    column-gap: 12px;
+    font-size: 10px;
+  }
+
+  .intro {
+    max-width: none;
+    font-size: 14px;
+  }
+
+  .links {
+    font-size: 11px;
+  }
 }
 
-.scrollCueTravel {
-  fill: none;
-  stroke: #fff;
-  stroke-width: 1.5;
-  stroke-linecap: round;
-  stroke-dasharray: 26 74;
-  animation: scroll-cue-travel 2.4s ease-in-out infinite;
-}
-
-@keyframes scroll-cue-travel {
-  from { stroke-dashoffset: 126; }
-  to { stroke-dashoffset: 26; }
-}
-
-/* ScrollStory flags the hero while it is off screen */
-.hero[data-offscreen] .scrollCueTravel {
-  animation-play-state: paused;
-}
-
-.fadeUp {
-  opacity: 0;
-  transform: translateY(16px);
-  animation: fade-up 700ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes fade-up {
-  to {
-    opacity: 1;
-    transform: translateY(0);
+/* Blurring a live video at load is too costly on phones. */
+@media (max-width: 810px), (pointer: coarse) {
+  .panel {
+    animation-name: panel-focus-light;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .wordInner {
+  .letter,
+  .quietIn,
+  .panel {
     animation: none;
-    transform: none;
   }
 
-  .fadeUp {
-    animation: none;
-    opacity: 1;
-    transform: none;
-  }
-
-  .button {
+  .link,
+  .linkArrow {
     transition: none;
-  }
-
-  .scrollCue {
-    transition: none;
-  }
-
-  .scrollCueTravel {
-    animation: none;
-    display: none;
   }
 }

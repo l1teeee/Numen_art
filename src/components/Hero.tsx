@@ -1,112 +1,105 @@
-import type { PointerEvent as ReactPointerEvent, ReactNode, Ref } from 'react'
-import { useEffect, useRef } from 'react'
-import GradientBackground from './GradientBackground'
+import type { CSSProperties, ReactNode } from 'react'
+import { useState } from 'react'
 import Grain from './Grain'
 import styles from './Hero.module.css'
 
-const TITLE_LINE_1 = ['Ideas', 'that']
-const TITLE_LINE_2 = ['refuse', 'to', 'sit', 'still.']
-const WORD_STAGGER_MS = 70
+const TITLE_WORDS = ['Numen', 'Art']
+const TITLE_LENGTH = TITLE_WORDS.join(' ').length
+const TITLE_START_MS = 120
+const LETTER_STAGGER_MS = 55
+const META_COLUMNS = [
+  ['Brand identity', 'Art direction', 'Naming'],
+  ['Motion design', 'Web design', 'Interactive experiences'],
+  ['Delta Numen', 'Creative division', 'El Salvador'],
+]
+const MOBILE_QUERY = '(max-width: 810px), (pointer: coarse)'
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
 
-// Renders each word in its own overflow-hidden mask so it can slide up independently,
-// continuing the stagger delay across both title lines.
-function maskedWords(words: string[], startIndex: number, dimmed: boolean): ReactNode[] {
+// Splits the title into letters that drift together while they come into focus,
+// starting from the middle of the title and reaching its ends last.
+function settlingLetters(words: string[]): ReactNode[] {
+  const centre = (TITLE_LENGTH - 1) / 2
   const nodes: ReactNode[] = []
-  words.forEach((word, i) => {
-    const delay = (startIndex + i) * WORD_STAGGER_MS
+  let position = 0
+  words.forEach((word, wordIndex) => {
     nodes.push(
-      <span className={styles.wordMask} key={startIndex + i}>
-        <span
-          className={dimmed ? `${styles.wordInner} ${styles.titleLine2}` : styles.wordInner}
-          style={{ animationDelay: `${delay}ms` }}
-        >
-          {word}
-        </span>
+      <span className={styles.word} key={word}>
+        {Array.from(word, (letter, letterIndex) => {
+          const spread = position + letterIndex - centre
+          const letterStyle = {
+            '--spread': spread,
+            animationDelay: `${TITLE_START_MS + Math.abs(spread) * LETTER_STAGGER_MS}ms`,
+          } as CSSProperties
+          return (
+            <span className={styles.letter} key={letterIndex} style={letterStyle}>
+              {letter}
+            </span>
+          )
+        })}
       </span>
     )
-    if (i < words.length - 1) nodes.push(' ')
+    position += word.length + 1
+    if (wordIndex < words.length - 1) nodes.push(' ')
   })
   return nodes
 }
 
-export default function Hero({ ref }: { ref: Ref<HTMLElement> }) {
-  const buttonRef = useRef<HTMLAnchorElement>(null)
-  const mediaQueriesRef = useRef<{ pointerFine: MediaQueryList; reducedMotion: MediaQueryList } | null>(null)
-
-  useEffect(() => {
-    mediaQueriesRef.current = {
-      pointerFine: window.matchMedia('(pointer: fine)'),
-      reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)'),
-    }
-  }, [])
-
-  const handlePointerMove = (e: ReactPointerEvent<HTMLAnchorElement>) => {
-    const button = buttonRef.current
-    const mediaQueries = mediaQueriesRef.current
-    const canMagnet = !!mediaQueries && mediaQueries.pointerFine.matches && !mediaQueries.reducedMotion.matches
-    if (!canMagnet || !button) return
-    const rect = button.getBoundingClientRect()
-    const relX = (e.clientX - rect.left) / rect.width - 0.5
-    const relY = (e.clientY - rect.top) / rect.height - 0.5
-    button.style.setProperty('--mx', `${relX * 6}px`)
-    button.style.setProperty('--my', `${relY * 6}px`)
-  }
-
-  const handlePointerLeave = () => {
-    const button = buttonRef.current
-    if (!button) return
-    button.style.setProperty('--mx', '0px')
-    button.style.setProperty('--my', '0px')
-  }
+export default function Hero() {
+  const [allowVideo] = useState(() => !window.matchMedia(REDUCED_MOTION_QUERY).matches)
+  const [isMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
+  const mediaName = isMobile ? 'hero-ink-mobile' : 'hero-ink'
 
   return (
-    <section ref={ref} className={styles.hero}>
-      <GradientBackground />
+    <section className={styles.hero}>
       <Grain />
 
-      <div className={styles.center}>
-        <h1 className={styles.title}>
-          {maskedWords(TITLE_LINE_1, 0, false)}
-          <br />
-          {maskedWords(TITLE_LINE_2, TITLE_LINE_1.length, true)}
+      <div className={styles.frame}>
+        <h1 className={styles.title} aria-label="Numen Art">
+          <span aria-hidden="true">{settlingLetters(TITLE_WORDS)}</span>
         </h1>
 
-        <p className={`${styles.description} ${styles.fadeUp}`} style={{ animationDelay: '600ms' }}>
-          Numen Art is the creative division of Delta Numen. We take an idea, give it an identity
-          and a direction, and build the web experience it was meant to become.
+        <div className={styles.masthead}>
+          <div className={`${styles.links} ${styles.quietIn}`} style={{ animationDelay: '900ms' }}>
+            <a className={styles.link} href="https://www.delta-numen.com" target="_blank" rel="noopener">
+              <span>Explore Numen Art</span>
+              <svg className={styles.linkArrow} viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M2.5 9.5L9.5 2.5M9.5 2.5H4M9.5 2.5V8" />
+              </svg>
+            </a>
+            <a className={styles.link} href="mailto:contact@delta-numen.com">
+              contact@delta-numen.com
+            </a>
+          </div>
+
+          <div className={`${styles.meta} ${styles.quietIn}`} style={{ animationDelay: '1000ms' }}>
+            {META_COLUMNS.map((column) => (
+              <ul className={styles.metaColumn} key={column[0]}>
+                {column.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            ))}
+          </div>
+        </div>
+
+        <p className={`${styles.intro} ${styles.quietIn}`} style={{ animationDelay: '1150ms' }}>
+          <strong>Ideas that refuse to sit still.</strong> Numen Art is the creative division of Delta
+          Numen. We take an idea, give it an identity and a direction, and build the web experience it
+          was meant to become.
         </p>
 
-        <span className={`${styles.buttonEntrance} ${styles.fadeUp}`} style={{ animationDelay: '750ms' }}>
-          <a
-            ref={buttonRef}
-            href="https://www.delta-numen.com"
-            target="_blank"
-            rel="noopener"
-            className={styles.button}
-            onPointerMove={handlePointerMove}
-            onPointerLeave={handlePointerLeave}
-          >
-            <span>Explore Numen Art</span>
-            <svg className={styles.buttonArrow} viewBox="0 0 12 12" aria-hidden="true">
-              <path d="M2.5 9.5L9.5 2.5M9.5 2.5H4M9.5 2.5V8" />
-            </svg>
-          </a>
-        </span>
-      </div>
-
-      <div className={styles.scrollCue} aria-hidden="true">
-        <svg className={styles.scrollCueSvg} viewBox="0 0 12 48" width="12" height="48">
-          <path
-            className={styles.scrollCueBase}
-            d="M6 1 C 9 11, 3 21, 6 30 C 8 38, 5 44, 6 47"
-            pathLength={100}
+        <div className={styles.panel} aria-hidden="true">
+          <video
+            className={styles.panelVideo}
+            src={`/media/${mediaName}.mp4`}
+            poster={`/media/${mediaName}.jpg`}
+            muted
+            loop
+            autoPlay={allowVideo}
+            playsInline
+            preload={allowVideo ? 'auto' : 'none'}
           />
-          <path
-            className={styles.scrollCueTravel}
-            d="M6 1 C 9 11, 3 21, 6 30 C 8 38, 5 44, 6 47"
-            pathLength={100}
-          />
-        </svg>
+        </div>
       </div>
     </section>
   )

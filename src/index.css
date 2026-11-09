@@ -2,15 +2,23 @@
   box-sizing: border-box;
 }
 
+/* One ground per style group in Works, which follows the project on screen. */
+:root {
+  --ground-organic: #e8e6d9;
+  --ground-luminous: #f6efdc;
+  --ground-geometric: #e2e3e6;
+  --ground-digital: #dfe6f2;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
   /* clip hides horizontal overflow without turning the root into a scroll container. */
   overflow-x: clip;
-  /* Prevent bounce past the white ending from revealing the black root. */
+  /* Prevent bounce from exposing the root past either end of the page. */
   overscroll-behavior-y: none;
-  background: #000;
+  background: #fff;
 }
 
 html {

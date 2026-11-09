@@ -1,0 +1,85 @@
+.concepts {
+  position: relative;
+  z-index: 0;
+  height: 100vh;
+  height: 100svh;
+  min-height: 560px;
+  overflow: hidden;
+  background: #000;
+}
+
+.video {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* "lighten" keeps whichever is brighter, text or video: the words read on the black
+   ground and are erased wherever the white figure touches them. */
+.words {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  color: #c7c7c7;
+  font-size: clamp(12px, 0.86vw, 15px);
+  font-weight: 500;
+  mix-blend-mode: lighten;
+  pointer-events: none;
+}
+
+.word {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  white-space: nowrap;
+  opacity: 0;
+  animation-name: word-cycle, word-vanish;
+  animation-duration: var(--cycle), var(--cycle);
+  animation-delay: var(--delay), calc(var(--delay) - var(--cycle) * 0.6);
+  animation-timing-function: ease-in-out, linear;
+  animation-iteration-count: infinite, infinite;
+}
+
+/* Only opacity moves: no slide, blur or letter effects, and long rests between appearances. */
+@keyframes word-cycle {
+  0%,
+  52%,
+  100% {
+    opacity: 0;
+  }
+  12%,
+  40% {
+    opacity: 1;
+  }
+}
+
+/* Changes nothing visible: its iteration event marks the moment a word starts to fade, for the sound. */
+@keyframes word-vanish {
+  from {
+    --word-vanish: 0;
+  }
+  to {
+    --word-vanish: 1;
+  }
+}
+
+:global([data-offscreen]) .word {
+  animation-play-state: paused;
+}
+
+@media (max-width: 810px) {
+  .word {
+    left: var(--mx);
+    top: var(--my);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .word {
+    animation: none;
+    opacity: 1;
+  }
+}
