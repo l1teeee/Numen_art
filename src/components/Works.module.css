@@ -248,7 +248,7 @@
   .hold {
     position: relative;
     z-index: 4;
-    margin-top: calc(-100svh - 60vh);
+    margin-top: calc(-100lvh - 60vh);
   }
 
   /* A real element, not padding: sticky can only travel inside its parent's content box. */

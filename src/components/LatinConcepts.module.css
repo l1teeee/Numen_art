@@ -2,7 +2,7 @@
   position: relative;
   z-index: 0;
   height: 100vh;
-  height: 100svh;
+  height: 100lvh;
   min-height: 560px;
   overflow: hidden;
   background: #000;

@@ -7,8 +7,9 @@
 /* Stacked and pinned only when the scroll timeline can dissolve the layers; reduced motion keeps normal flow. */
 @media (prefers-reduced-motion: no-preference) {
   .stage {
+    /* the large viewport: the stage must still cover the screen once the mobile address bar hides */
     height: 100vh;
-    height: 100svh;
+    height: 100lvh;
     min-height: 560px;
     overflow: hidden;
   }
