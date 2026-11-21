@@ -45,4 +45,5 @@ export const PROJECTS: Project[] = [
   { index: '27', name: 'brian', style: 'Digital', url: 'https://brian-eta.vercel.app/', media: 'project-brian', mobileMedia: 'project-brian-mobile', video: 'project-brian', mobileVideo: 'project-brian-mobile' },
   { index: '28', name: 'oi', style: 'Digital', url: 'https://oi-nine-mu.vercel.app/', media: 'project-oi', mobileMedia: 'project-oi-mobile', video: 'project-oi', mobileVideo: 'project-oi-mobile' },
   { index: '29', name: 'situ', style: 'Digital', url: 'https://situ-mocha.vercel.app/', media: 'project-situ', mobileMedia: 'project-situ-mobile', video: 'project-situ', mobileVideo: 'project-situ-mobile' },
+  { index: '30', name: 'adore', style: 'Digital', url: 'https://adore-opal-five.vercel.app/', media: 'project-adore', mobileMedia: 'project-adore-mobile', video: 'project-adore', mobileVideo: 'project-adore-mobile' },
 ]
