@@ -92,7 +92,6 @@ export default function Hero() {
   return (
     <section className={styles.hero}>
       <Grain />
-      <canvas className={styles.wipe} data-hero-wipe aria-hidden="true" />
 
       <div className={styles.frame}>
         <h1 className={styles.title} aria-label="Numen Art">

@@ -3,7 +3,6 @@
   --small-text: clamp(11px, 0.82vw, 13px);
   --panel-radius: 32px;
   position: relative;
-  isolation: isolate;
   width: 100%;
   height: 100vh;
   height: 100svh;
@@ -13,13 +12,9 @@
   color: #000;
 }
 
-.wipe {
-  display: none;
-}
-
-/* No z-index on the grid container so the pixel wipe canvas can sit between the grain and the content. */
 .frame {
   position: relative;
+  z-index: 3;
   height: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1.16fr) minmax(0, 1fr);
@@ -31,14 +26,6 @@
   row-gap: clamp(20px, 3.4vh, 40px);
   padding: var(--gutter);
   padding-bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
-}
-
-.title,
-.masthead,
-.intro,
-.panel {
-  position: relative;
-  z-index: 2;
 }
 
 .title {
@@ -294,65 +281,6 @@
 @media (max-width: 810px), (pointer: coarse) {
   .panel {
     animation-name: panel-focus-light;
-  }
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .hero {
-    height: 100%;
-    min-height: 560px;
-  }
-
-  .wipe {
-    position: absolute;
-    inset: 0;
-    z-index: 3;
-    display: block;
-    width: 100%;
-    height: 100%;
-    /* Covers the white hero before the scroll timeline paints its first frame. */
-    background: #000;
-    pointer-events: none;
-  }
-
-  .title,
-  .masthead,
-  .intro {
-    z-index: 4;
-    color: #fff;
-    mix-blend-mode: difference;
-  }
-
-  .intro {
-    color: rgba(255, 255, 255, 0.62);
-  }
-
-  .intro strong,
-  .link {
-    color: #fff;
-  }
-
-  .link:focus-visible {
-    outline-color: #fff;
-  }
-
-  /* Inverted video blended by difference: inverted over the black wipe, normal over the white page. */
-  .panel {
-    z-index: 4;
-    mix-blend-mode: difference;
-    background: #232323;
-  }
-
-  .panelVideo {
-    filter: invert(1);
-  }
-}
-
-@media (max-width: 810px) and (prefers-reduced-motion: no-preference) {
-  .frame {
-    height: 100vh;
-    height: 100svh;
-    min-height: 560px;
   }
 }
 
