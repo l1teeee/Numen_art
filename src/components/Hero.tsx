@@ -88,10 +88,12 @@ export default function Hero() {
   const [allowVideo] = useState(() => !window.matchMedia(REDUCED_MOTION_QUERY).matches)
   const [isMobile] = useState(() => window.matchMedia(MOBILE_QUERY).matches)
   const mediaName = isMobile ? 'hero-ink-mobile' : 'hero-ink'
+  const revealName = isMobile ? 'hero-smoke-mobile' : 'hero-smoke'
 
   return (
     <section className={styles.hero}>
       <Grain />
+      <canvas className={styles.wipe} data-hero-wipe aria-hidden="true" />
 
       <div className={styles.frame}>
         <h1 className={styles.title} aria-label="Numen Art">
@@ -132,6 +134,17 @@ export default function Hero() {
         <div className={styles.panel} aria-hidden="true">
           <video
             className={styles.panelVideo}
+            src={`/media/${revealName}.mp4`}
+            poster={`/media/${revealName}.jpg`}
+            muted
+            loop
+            autoPlay={allowVideo}
+            playsInline
+            preload={allowVideo ? 'auto' : 'none'}
+          />
+          <video
+            className={`${styles.panelVideo} ${styles.panelInk}`}
+            data-hero-panel-ink
             src={`/media/${mediaName}.mp4`}
             poster={`/media/${mediaName}.jpg`}
             muted

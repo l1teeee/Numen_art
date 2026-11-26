@@ -4,6 +4,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import Gallery from './Gallery'
 import { addGalleryMotion } from './galleryMotion'
+import { addHeroMotion } from './heroMotion'
 import { addServicesMotion } from './servicesMotion'
 import { playIfAllowed } from './playIfAllowed'
 import Hero from './Hero'
@@ -20,16 +21,17 @@ ScrollTrigger.config({ ignoreMobileResize: true })
 // before the next one starts to appear, so two sections never share the screen.
 const FADE_OUT = 0.45
 const FADE_IN = 0.45
-const HERO_OUT_AT = 0.25
-const GALLERY_IN_AT = 0.75
-const PRINTS_IN_AT = 0.85
+const HERO_WIPE = 1.15
+const HERO_OUT_AT = 1.75
+const GALLERY_IN_AT = 2.25
+const PRINTS_IN_AT = 2.35
 const PRINTS_IN = 1
-const GALLERY_OUT_AT = 3.75
-const CONCEPTS_IN_AT = 4.25
-const CONCEPTS_OUT_AT = 5.9
-const SERVICES_IN_AT = 6.4
-const SERVICE_LINES_IN_AT = 6.5
-const EXIT_AT = 8.75
+const GALLERY_OUT_AT = 5.25
+const CONCEPTS_IN_AT = 5.75
+const CONCEPTS_OUT_AT = 7.4
+const SERVICES_IN_AT = 7.9
+const SERVICE_LINES_IN_AT = 8
+const EXIT_AT = 10.25
 // Selected work must arrive this far before the pin ends: matches 60vh in Works.module.css.
 const EXIT_DISSOLVE = 0.6
 const TIMELINE_LENGTH = EXIT_AT + EXIT_DISSOLVE
@@ -104,6 +106,10 @@ export default function IntroStage() {
           .to(servicesLayer, { autoAlpha: 0, ...softenOut, ease: 'none', duration: EXIT_DISSOLVE / 2 }, EXIT_AT)
           .to(stage, { autoAlpha: 0, ease: 'none', duration: EXIT_DISSOLVE / 2 }, EXIT_AT + EXIT_DISSOLVE / 2)
 
+        const stopHeroMotion = addHeroMotion(timeline, heroLayer, {
+          duration: HERO_WIPE,
+        })
+
         addGalleryMotion(timeline, galleryLayer, {
           enterAt: PRINTS_IN_AT,
           enterDuration: PRINTS_IN,
@@ -124,7 +130,10 @@ export default function IntroStage() {
           { rootMargin: '25% 0px' },
         )
         nearObserver.observe(stage)
-        return () => nearObserver.disconnect()
+        return () => {
+          stopHeroMotion()
+          nearObserver.disconnect()
+        }
       })
 
       return () => mm.revert()
